@@ -1,0 +1,35 @@
+# Build artifacts
+ClaudeUsageWidget.app/
+build/
+.build/
+DerivedData/
+
+# Swift
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+*.o
+*.dSYM
+*.dylib
+
+# Xcode (if anyone opens it in Xcode)
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Runtime / user data (must never leak)
+*.log
+*.pid
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

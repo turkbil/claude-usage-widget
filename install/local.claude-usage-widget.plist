@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>local.claude-usage-widget</string>
+  <key>ProgramArguments</key>
+  <array>
+    <!--
+      EDIT THIS PATH if you put ClaudeUsageWidget.app somewhere else.
+      Tilde (~) is NOT expanded by launchd — use an absolute path.
+    -->
+    <string>/Users/CHANGE_ME/ClaudeUsageWidget/ClaudeUsageWidget.app/Contents/MacOS/ClaudeUsageWidget</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/claude-usage-widget.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/claude-usage-widget.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>

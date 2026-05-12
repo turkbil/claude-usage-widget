@@ -1,0 +1,44 @@
+/* Título en la barra de estado */
+"title.loading" = "🤖 …";
+"title.error" = "🤖 ?";
+"title.percent" = "🤖 %d %%";
+"title.percent_with_time" = "🤖 %d %% · %@";
+"tooltip" = "Esta semana: %d %% usado · se reinicia en %@";
+
+/* Encabezados de sección */
+"section.weekly" = "ESTA SEMANA";
+"section.five_hour" = "VENTANA DE 5 HORAS";
+
+/* Etiquetas de fila */
+"label.all_models" = "Todos los modelos";
+"label.sonnet" = "Sonnet";
+"label.usage" = "Uso";
+
+/* Formatos de tiempo */
+"time.days_hours" = "%dd %dh";
+"time.hours_minutes" = "%dh %dmin";
+"time.minutes" = "%dmin";
+"time.reset" = "reiniciado";
+
+/* "%@ restantes" p.ej. "3d 18h restantes" */
+"remaining.suffix" = "%@ restantes";
+"footer.updated" = "Actualizado: %@";
+
+/* Elementos del menú */
+"menu.show_remaining_in_title" = "Mostrar tiempo restante en el título";
+"menu.refresh" = "Actualizar ahora";
+"menu.open_usage" = "Abrir claude.ai/settings/usage";
+"menu.quit" = "Salir";
+
+/* Errores */
+"error.cookie_db" = "No se puede leer la base de datos de cookies de Chrome";
+"error.no_session" = "Sin sesión de claude.ai — inicia sesión en Chrome";
+"error.keychain_denied" = "Acceso al llavero denegado";
+"error.keychain_read" = "No se puede leer 'Chrome Safe Storage' (estado %d)";
+"error.unknown_cookie_version" = "Versión de cookie desconocida: %@";
+"error.cookie_decrypt" = "Descifrado de cookie fallido";
+"error.cookie_empty" = "Cookie descifrada vacía";
+"error.api_parse" = "Error al analizar JSON de uso";
+"error.org_not_found" = "ID de organización no encontrado";
+"error.http" = "HTTP %d: %@";
+"error.empty_response" = "Respuesta vacía";

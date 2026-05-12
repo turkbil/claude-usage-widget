@@ -1,0 +1,44 @@
+/* Statusleisten-Titel */
+"title.loading" = "🤖 …";
+"title.error" = "🤖 ?";
+"title.percent" = "🤖 %d %%";
+"title.percent_with_time" = "🤖 %d %% · %@";
+"tooltip" = "Diese Woche: %d %% verwendet · Reset in %@";
+
+/* Abschnitts-Überschriften */
+"section.weekly" = "DIESE WOCHE";
+"section.five_hour" = "5-STUNDEN-FENSTER";
+
+/* Zeilenbeschriftungen */
+"label.all_models" = "Alle Modelle";
+"label.sonnet" = "Sonnet";
+"label.usage" = "Nutzung";
+
+/* Zeitformate */
+"time.days_hours" = "%dT %dStd";
+"time.hours_minutes" = "%dStd %dMin";
+"time.minutes" = "%dMin";
+"time.reset" = "zurückgesetzt";
+
+/* "%@ übrig" z.B. "3T 18Std übrig" */
+"remaining.suffix" = "%@ übrig";
+"footer.updated" = "Aktualisiert: %@";
+
+/* Menüpunkte */
+"menu.show_remaining_in_title" = "Restzeit im Titel anzeigen";
+"menu.refresh" = "Jetzt aktualisieren";
+"menu.open_usage" = "claude.ai/settings/usage öffnen";
+"menu.quit" = "Beenden";
+
+/* Fehler */
+"error.cookie_db" = "Chrome Cookie-Datenbank nicht lesbar";
+"error.no_session" = "Keine claude.ai-Sitzung — bitte in Chrome anmelden";
+"error.keychain_denied" = "Schlüsselbund-Zugriff verweigert";
+"error.keychain_read" = "Chrome Safe Storage nicht lesbar (Status %d)";
+"error.unknown_cookie_version" = "Unbekannte Cookie-Version: %@";
+"error.cookie_decrypt" = "Cookie-Entschlüsselung fehlgeschlagen";
+"error.cookie_empty" = "Entschlüsseltes Cookie leer";
+"error.api_parse" = "Nutzungs-JSON Parse-Fehler";
+"error.org_not_found" = "Organisations-ID nicht gefunden";
+"error.http" = "HTTP %d: %@";
+"error.empty_response" = "Leere Antwort";

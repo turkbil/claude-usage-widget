@@ -1,0 +1,44 @@
+/* Durum çubuğu başlığı */
+"title.loading" = "🤖 …";
+"title.error" = "🤖 ?";
+"title.percent" = "🤖 %%%d";
+"title.percent_with_time" = "🤖 %%%d · %@";
+"tooltip" = "Bu hafta: %%%d kullanıldı · reset %@";
+
+/* Bölüm başlıkları */
+"section.weekly" = "BU HAFTA";
+"section.five_hour" = "5 SAATLİK PENCERE";
+
+/* Satır etiketleri */
+"label.all_models" = "Tüm modeller";
+"label.sonnet" = "Sonnet";
+"label.usage" = "Kullanım";
+
+/* Zaman formatları */
+"time.days_hours" = "%dg %ds";
+"time.hours_minutes" = "%ds %ddk";
+"time.minutes" = "%ddk";
+"time.reset" = "sıfırlandı";
+
+/* Örn: "3g 18s kaldı" */
+"remaining.suffix" = "%@ kaldı";
+"footer.updated" = "Güncelleme: %@";
+
+/* Menü */
+"menu.show_remaining_in_title" = "Kalan süreyi yanında göster";
+"menu.refresh" = "Şimdi yenile";
+"menu.open_usage" = "claude.ai/settings/usage'ı aç";
+"menu.quit" = "Çıkış";
+
+/* Hatalar */
+"error.cookie_db" = "Chrome cookie veritabanı okunamadı";
+"error.no_session" = "claude.ai oturumu yok — Chrome'da giriş yap";
+"error.keychain_denied" = "Keychain erişimi reddedildi";
+"error.keychain_read" = "Chrome Safe Storage okunamadı (durum %d)";
+"error.unknown_cookie_version" = "Bilinmeyen cookie sürümü: %@";
+"error.cookie_decrypt" = "Cookie çözme başarısız";
+"error.cookie_empty" = "Çözülen cookie boş";
+"error.api_parse" = "Kullanım JSON ayrıştırma hatası";
+"error.org_not_found" = "Organizasyon ID bulunamadı";
+"error.http" = "HTTP %d: %@";
+"error.empty_response" = "Boş yanıt";

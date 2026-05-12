@@ -1,0 +1,44 @@
+/* Status bar title */
+"title.loading" = "🤖 …";
+"title.error" = "🤖 ?";
+"title.percent" = "🤖 %d%%";
+"title.percent_with_time" = "🤖 %d%% · %@";
+"tooltip" = "This week: %d%% used · resets in %@";
+
+/* Section headers */
+"section.weekly" = "WEEKLY";
+"section.five_hour" = "5-HOUR WINDOW";
+
+/* Row labels */
+"label.all_models" = "All models";
+"label.sonnet" = "Sonnet";
+"label.usage" = "Usage";
+
+/* Time formats */
+"time.days_hours" = "%dd %dh";
+"time.hours_minutes" = "%dh %dm";
+"time.minutes" = "%dm";
+"time.reset" = "reset";
+
+/* "%@ left" e.g. "3d 18h left" */
+"remaining.suffix" = "%@ left";
+"footer.updated" = "Updated: %@";
+
+/* Menu items */
+"menu.show_remaining_in_title" = "Show remaining time in title";
+"menu.refresh" = "Refresh now";
+"menu.open_usage" = "Open claude.ai/settings/usage";
+"menu.quit" = "Quit";
+
+/* Errors */
+"error.cookie_db" = "Cannot read Chrome cookie database";
+"error.no_session" = "No claude.ai session — please log in via Chrome";
+"error.keychain_denied" = "Keychain access denied";
+"error.keychain_read" = "Cannot read 'Chrome Safe Storage' (status %d)";
+"error.unknown_cookie_version" = "Unknown cookie version: %@";
+"error.cookie_decrypt" = "Cookie decryption failed";
+"error.cookie_empty" = "Cookie decrypted as empty";
+"error.api_parse" = "Usage JSON parse error";
+"error.org_not_found" = "Organization ID not found";
+"error.http" = "HTTP %d: %@";
+"error.empty_response" = "Empty response";

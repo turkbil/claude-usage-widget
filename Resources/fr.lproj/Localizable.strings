@@ -1,0 +1,44 @@
+/* Titre de la barre d'état */
+"title.loading" = "🤖 …";
+"title.error" = "🤖 ?";
+"title.percent" = "🤖 %d %%";
+"title.percent_with_time" = "🤖 %d %% · %@";
+"tooltip" = "Cette semaine : %d %% utilisé · réinitialisation dans %@";
+
+/* En-têtes de section */
+"section.weekly" = "CETTE SEMAINE";
+"section.five_hour" = "FENÊTRE DE 5 HEURES";
+
+/* Étiquettes de ligne */
+"label.all_models" = "Tous les modèles";
+"label.sonnet" = "Sonnet";
+"label.usage" = "Utilisation";
+
+/* Formats de temps */
+"time.days_hours" = "%dj %dh";
+"time.hours_minutes" = "%dh %dmin";
+"time.minutes" = "%dmin";
+"time.reset" = "réinitialisé";
+
+/* "%@ restant" p.ex. "3j 18h restant" */
+"remaining.suffix" = "%@ restant";
+"footer.updated" = "Mis à jour : %@";
+
+/* Éléments de menu */
+"menu.show_remaining_in_title" = "Afficher le temps restant dans le titre";
+"menu.refresh" = "Actualiser maintenant";
+"menu.open_usage" = "Ouvrir claude.ai/settings/usage";
+"menu.quit" = "Quitter";
+
+/* Erreurs */
+"error.cookie_db" = "Impossible de lire la base de données de cookies Chrome";
+"error.no_session" = "Aucune session claude.ai — connectez-vous via Chrome";
+"error.keychain_denied" = "Accès au trousseau refusé";
+"error.keychain_read" = "Impossible de lire 'Chrome Safe Storage' (statut %d)";
+"error.unknown_cookie_version" = "Version de cookie inconnue : %@";
+"error.cookie_decrypt" = "Échec du déchiffrement du cookie";
+"error.cookie_empty" = "Cookie déchiffré vide";
+"error.api_parse" = "Erreur d'analyse JSON d'utilisation";
+"error.org_not_found" = "ID d'organisation introuvable";
+"error.http" = "HTTP %d : %@";
+"error.empty_response" = "Réponse vide";
