@@ -364,74 +364,126 @@ final class AccountHeaderView: NSView {
 }
 
 final class SparklineView: NSView {
+    var snapshot: UsageSnapshot? { didSet { needsDisplay = true } }
     var samples: [UsageHistory.Sample] = [] { didSet { needsDisplay = true } }
 
     override func draw(_ dirtyRect: NSRect) {
-        let r = bounds.insetBy(dx: Layout.hPad, dy: 8)
-        guard r.width > 10, r.height > 10 else { return }
-
-        // Baseline rule
-        NSColor.tertiaryLabelColor.withAlphaComponent(0.25).setStroke()
-        let baseline = NSBezierPath()
-        baseline.lineWidth = 0.5
-        baseline.move(to: NSPoint(x: r.minX, y: r.maxY - 0.5))
-        baseline.line(to: NSPoint(x: r.maxX, y: r.maxY - 0.5))
-        baseline.stroke()
-
-        guard samples.count >= 2 else {
-            // Empty state — small hint
+        let r = bounds.insetBy(dx: Layout.hPad, dy: 6)
+        guard r.width > 10, r.height > 10, let snap = snapshot else {
+            // Empty state — no data yet
             let attrs: [NSAttributedString.Key: Any] = [
                 .foregroundColor: NSColor.tertiaryLabelColor,
                 .font: NSFont.systemFont(ofSize: 10),
             ]
             let hint = NSAttributedString(string: L("sparkline.empty"), attributes: attrs)
             let size = hint.size()
-            hint.draw(at: NSPoint(x: r.midX - size.width / 2, y: r.midY - size.height / 2))
+            hint.draw(at: NSPoint(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2))
             return
         }
 
-        let tMin = samples.first!.t
-        let tMax = samples.last!.t
-        let tRange = max(1, tMax - tMin)
+        // Timeline spans the full weekly window: weekStart → weekEnd.
+        let weekEndT   = snap.weeklyResetsAt.timeIntervalSince1970
+        let weekStartT = weekEndT - 7 * 24 * 3600
+        let nowT       = Date().timeIntervalSince1970
+        let tRange = max(1, weekEndT - weekStartT)
 
-        // Y axis: 0...100 normalized
-        func point(for s: UsageHistory.Sample) -> NSPoint {
-            let x = r.minX + r.width * CGFloat((s.t - tMin) / tRange)
-            let y = r.minY + r.height * (1 - CGFloat(min(100, max(0, s.v)) / 100))
-            return NSPoint(x: x, y: y)
+        func point(t: Double, v: Double) -> NSPoint {
+            let xFrac = max(0, min(1, (t - weekStartT) / tRange))
+            let yFrac = max(0, min(1, v / 100))
+            return NSPoint(
+                x: r.minX + r.width * CGFloat(xFrac),
+                y: r.minY + r.height * (1 - CGFloat(yFrac))
+            )
         }
 
-        let line = NSBezierPath()
-        line.move(to: point(for: samples[0]))
-        for s in samples.dropFirst() { line.line(to: point(for: s)) }
+        // 1. Top baseline rule (the 100% mark).
+        NSColor.tertiaryLabelColor.withAlphaComponent(0.18).setStroke()
+        let baseline = NSBezierPath()
+        baseline.lineWidth = 0.5
+        baseline.move(to: NSPoint(x: r.minX, y: r.minY))
+        baseline.line(to: NSPoint(x: r.maxX, y: r.minY))
+        baseline.stroke()
 
-        // Fill under curve (gradient)
-        let fill = line.copy() as! NSBezierPath
-        fill.line(to: NSPoint(x: r.maxX, y: r.maxY))
-        fill.line(to: NSPoint(x: r.minX, y: r.maxY))
-        fill.close()
+        // 2. "Now" vertical guide (subtle).
+        let nowX = point(t: nowT, v: 0).x
+        NSColor.tertiaryLabelColor.withAlphaComponent(0.20).setStroke()
+        let nowGuide = NSBezierPath()
+        nowGuide.lineWidth = 0.5
+        nowGuide.move(to: NSPoint(x: nowX, y: r.minY))
+        nowGuide.line(to: NSPoint(x: nowX, y: r.maxY))
+        nowGuide.stroke()
+
+        // 3. Past path: weekStart (0%) → samples within range → now (current%).
+        var past: [NSPoint] = []
+        past.append(point(t: weekStartT, v: 0))
+        for s in samples where s.t > weekStartT && s.t <= nowT {
+            past.append(point(t: s.t, v: s.v))
+        }
+        past.append(point(t: nowT, v: snap.weeklyUtilization))
 
         let ember = NSColor(hex: "#d68c45")
-        let grad = NSGradient(colors: [
-            ember.withAlphaComponent(0.30),
-            ember.withAlphaComponent(0.0),
-        ])!
-        grad.draw(in: fill, angle: -90)
 
-        ember.setStroke()
-        line.lineWidth = 1.5
-        line.lineCapStyle = .round
-        line.lineJoinStyle = .round
-        line.stroke()
-
-        // Last value bullet
-        if let last = samples.last {
-            let p = point(for: last)
-            let dotR: CGFloat = 2.4
-            ember.setFill()
-            let dot = NSBezierPath(ovalIn: NSRect(x: p.x - dotR, y: p.y - dotR, width: dotR*2, height: dotR*2))
-            dot.fill()
+        // Filled area under the past line
+        let area = NSBezierPath()
+        area.move(to: past[0])
+        for p in past.dropFirst() { area.line(to: p) }
+        area.line(to: NSPoint(x: past.last!.x, y: r.maxY))
+        area.line(to: NSPoint(x: past.first!.x, y: r.maxY))
+        area.close()
+        if let grad = NSGradient(colors: [ember.withAlphaComponent(0.32),
+                                         ember.withAlphaComponent(0.00)]) {
+            grad.draw(in: area, angle: -90)
         }
+
+        // Solid line for the past
+        let pastPath = NSBezierPath()
+        pastPath.move(to: past[0])
+        for p in past.dropFirst() { pastPath.line(to: p) }
+        pastPath.lineWidth = 1.5
+        pastPath.lineCapStyle  = .round
+        pastPath.lineJoinStyle = .round
+        ember.setStroke()
+        pastPath.stroke()
+
+        // 4. Future path: now → weekEnd at projected % (dashed).
+        let projected = projectedEndPct(for: snap)
+        let futureEnd = point(t: weekEndT, v: projected)
+        let future = NSBezierPath()
+        future.move(to: past.last!)
+        future.line(to: futureEnd)
+        future.lineWidth = 1.2
+        future.lineCapStyle = .round
+        let dash: [CGFloat] = [3, 3]
+        future.setLineDash(dash, count: 2, phase: 0)
+        ember.withAlphaComponent(0.55).setStroke()
+        future.stroke()
+
+        // 5. Now dot (highlighted).
+        let dotR: CGFloat = 2.8
+        ember.setFill()
+        let dot = NSBezierPath(ovalIn: NSRect(
+            x: past.last!.x - dotR, y: past.last!.y - dotR,
+            width: dotR * 2, height: dotR * 2))
+        dot.fill()
+
+        // 6. Tiny projected-end dot (ghost).
+        ember.withAlphaComponent(0.55).setFill()
+        let endDotR: CGFloat = 2.0
+        let endDot = NSBezierPath(ovalIn: NSRect(
+            x: futureEnd.x - endDotR, y: futureEnd.y - endDotR,
+            width: endDotR * 2, height: endDotR * 2))
+        endDot.fill()
+    }
+
+    /// Linear extrapolation to end of week, capped at 100%.
+    private func projectedEndPct(for snap: UsageSnapshot) -> Double {
+        let weekEndT   = snap.weeklyResetsAt.timeIntervalSince1970
+        let weekStartT = weekEndT - 7 * 24 * 3600
+        let nowT       = Date().timeIntervalSince1970
+        let elapsed = max(60, nowT - weekStartT)
+        let total   = max(60, weekEndT - weekStartT)
+        let projected = snap.weeklyUtilization * (total / elapsed)
+        return min(100, max(snap.weeklyUtilization, projected))
     }
 }
 
@@ -602,6 +654,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         updateTitle()
         updateMenuLabels()
+        // Make sure the sparkline shows the cached snapshot on first open.
+        sparklineView?.snapshot = lastSnapshot
+        sparklineView?.samples  = UsageHistory.shared.recent(seconds: 7 * 24 * 3600)
     }
 
     func saveCache(_ s: UsageSnapshot) {
@@ -641,6 +696,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.refreshVersionBadge()
                     LocalHTTPServer.shared.setSnapshot(snap)
                     UsageHistory.shared.record(weeklyPct: snap.weeklyUtilization)
+                    self.sparklineView?.snapshot = snap
                     self.sparklineView?.samples = UsageHistory.shared.recent(seconds: 7 * 24 * 3600)
                 }
             } catch {
