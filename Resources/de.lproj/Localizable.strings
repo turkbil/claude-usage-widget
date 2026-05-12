@@ -96,3 +96,10 @@
 "forecast.under"    = "↗ Projected end-of-week: %d%%";
 "forecast.over"     = "⚠ At this pace, limit in ~%@";
 "forecast.exceeded" = "⚠ Limit exceeded";
+
+/* §09 Local HTTP + MCP (EN fallback) */
+"menu.local_http" = "Local HTTP endpoint (:9123)";
+"menu.mcp_install" = "MCP install instructions…";
+"mcp.install_title" = "Install as MCP server";
+"mcp.install_body" = "Add to ~/.claude.json:\n\n{\n  \"mcpServers\": {\n    \"claude-usage\": {\n      \"command\": \"%@\",\n      \"args\": [\"--mcp-server\"]\n    }\n  }\n}\n\nThen restart Claude Code. Claude will be able to call get_usage to see its own weekly limit.";
+"button.copy_path" = "Copy binary path";

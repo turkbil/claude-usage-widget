@@ -60,6 +60,12 @@ struct Preferences: Codable {
     var versionCheckEnabled:    Bool   = true
     var latestKnownVersion:     String = ""
     var lastVersionCheckEpoch:  TimeInterval = 0
+
+    // §09 Local HTTP endpoint (port 9123)
+    var localApiEnabled: Bool = false
+
+    // §09 MCP server — no toggle here; controlled by Claude's mcpServers config.
+    //                  Field reserved for future per-launch state if needed.
 }
 
 // MARK: - Store

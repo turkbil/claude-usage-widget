@@ -433,6 +433,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var versionUpdateSeparator: NSMenuItem?
 
     static func main() {
+        // CLI-mode subprocess flags must short-circuit before any AppKit setup.
+        if CommandLine.arguments.contains("--mcp-server") {
+            MCPServer.run()
+        }
+        if CommandLine.arguments.contains("--print-usage") {
+            CLIRunner.printUsageAndExit()
+        }
+
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
@@ -465,6 +473,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Version check on launch (fires only if due).
         VersionChecker.shared.checkIfDue()
+
+        // Local HTTP endpoint reflects the current preference.
+        LocalHTTPServer.shared.apply(enabled: PrefsStore.shared.prefs.localApiEnabled)
     }
 
     // MARK: - Timers
@@ -486,6 +497,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rebuildSettingsMenus()
         // Reflect any new latestKnownVersion.
         refreshVersionBadge()
+        // Start/stop local HTTP endpoint if its toggle changed.
+        LocalHTTPServer.shared.apply(enabled: PrefsStore.shared.prefs.localApiEnabled)
     }
 
     // MARK: - Hotkey
@@ -553,6 +566,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     NotificationManager.shared.evaluate(snapshot: snap)
                     VersionChecker.shared.checkIfDue()
                     self.refreshVersionBadge()
+                    LocalHTTPServer.shared.setSnapshot(snap)
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -799,7 +813,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updItem.state = PrefsStore.shared.prefs.versionCheckEnabled ? .on : .off
         m.addItem(updItem)
 
+        // §09 Local HTTP endpoint
+        let httpItem = NSMenuItem(title: L("menu.local_http"),
+                                  action: #selector(toggleLocalHTTP), keyEquivalent: "")
+        httpItem.state = PrefsStore.shared.prefs.localApiEnabled ? .on : .off
+        m.addItem(httpItem)
+
+        // §09 MCP install instructions
+        let mcpItem = NSMenuItem(title: L("menu.mcp_install"),
+                                 action: #selector(showMCPInstall), keyEquivalent: "")
+        m.addItem(mcpItem)
+
         return m
+    }
+
+    @objc func toggleLocalHTTP() {
+        PrefsStore.shared.update { $0.localApiEnabled.toggle() }
+    }
+
+    @objc func showMCPInstall() {
+        let alert = NSAlert()
+        alert.messageText = L("mcp.install_title")
+        alert.informativeText = L("mcp.install_body",
+            (Bundle.main.executablePath ?? "/path/to/ClaudeUsageWidget") as NSString)
+        alert.addButton(withTitle: L("button.copy_path"))
+        alert.addButton(withTitle: L("button.ok"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(Bundle.main.executablePath ?? "", forType: .string)
+        }
     }
 
     func rebuildSettingsMenus() {
