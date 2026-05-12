@@ -363,6 +363,78 @@ final class AccountHeaderView: NSView {
     }
 }
 
+final class SparklineView: NSView {
+    var samples: [UsageHistory.Sample] = [] { didSet { needsDisplay = true } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let r = bounds.insetBy(dx: Layout.hPad, dy: 8)
+        guard r.width > 10, r.height > 10 else { return }
+
+        // Baseline rule
+        NSColor.tertiaryLabelColor.withAlphaComponent(0.25).setStroke()
+        let baseline = NSBezierPath()
+        baseline.lineWidth = 0.5
+        baseline.move(to: NSPoint(x: r.minX, y: r.maxY - 0.5))
+        baseline.line(to: NSPoint(x: r.maxX, y: r.maxY - 0.5))
+        baseline.stroke()
+
+        guard samples.count >= 2 else {
+            // Empty state — small hint
+            let attrs: [NSAttributedString.Key: Any] = [
+                .foregroundColor: NSColor.tertiaryLabelColor,
+                .font: NSFont.systemFont(ofSize: 10),
+            ]
+            let hint = NSAttributedString(string: L("sparkline.empty"), attributes: attrs)
+            let size = hint.size()
+            hint.draw(at: NSPoint(x: r.midX - size.width / 2, y: r.midY - size.height / 2))
+            return
+        }
+
+        let tMin = samples.first!.t
+        let tMax = samples.last!.t
+        let tRange = max(1, tMax - tMin)
+
+        // Y axis: 0...100 normalized
+        func point(for s: UsageHistory.Sample) -> NSPoint {
+            let x = r.minX + r.width * CGFloat((s.t - tMin) / tRange)
+            let y = r.minY + r.height * (1 - CGFloat(min(100, max(0, s.v)) / 100))
+            return NSPoint(x: x, y: y)
+        }
+
+        let line = NSBezierPath()
+        line.move(to: point(for: samples[0]))
+        for s in samples.dropFirst() { line.line(to: point(for: s)) }
+
+        // Fill under curve (gradient)
+        let fill = line.copy() as! NSBezierPath
+        fill.line(to: NSPoint(x: r.maxX, y: r.maxY))
+        fill.line(to: NSPoint(x: r.minX, y: r.maxY))
+        fill.close()
+
+        let ember = NSColor(hex: "#d68c45")
+        let grad = NSGradient(colors: [
+            ember.withAlphaComponent(0.30),
+            ember.withAlphaComponent(0.0),
+        ])!
+        grad.draw(in: fill, angle: -90)
+
+        ember.setStroke()
+        line.lineWidth = 1.5
+        line.lineCapStyle = .round
+        line.lineJoinStyle = .round
+        line.stroke()
+
+        // Last value bullet
+        if let last = samples.last {
+            let p = point(for: last)
+            let dotR: CGFloat = 2.4
+            ember.setFill()
+            let dot = NSBezierPath(ovalIn: NSRect(x: p.x - dotR, y: p.y - dotR, width: dotR*2, height: dotR*2))
+            dot.fill()
+        }
+    }
+}
+
 final class ForecastView: NSView {
     let field = NSTextField(labelWithString: "")
     init(width: CGFloat) {
@@ -423,6 +495,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var allModelsRow: UsageRowView!
     var sonnetRow: UsageRowView!
     var forecastView: ForecastView!
+    var sparklineView: SparklineView!
     var fiveHourHeader: SectionHeaderView!
     var fiveHourRow: UsageRowView!
     var footer: FooterView!
@@ -567,6 +640,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     VersionChecker.shared.checkIfDue()
                     self.refreshVersionBadge()
                     LocalHTTPServer.shared.setSnapshot(snap)
+                    UsageHistory.shared.record(weeklyPct: snap.weeklyUtilization)
+                    self.sparklineView?.samples = UsageHistory.shared.recent(seconds: 7 * 24 * 3600)
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -627,6 +702,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let forecastItem = NSMenuItem(); forecastItem.view = forecastView
         menu.addItem(forecastItem)
 
+        // 7-day sparkline trend
+        sparklineView = SparklineView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: 44))
+        sparklineView.autoresizingMask = [.width]
+        let sparklineItem = NSMenuItem(); sparklineItem.view = sparklineView
+        menu.addItem(sparklineItem)
+
         menu.addItem(NSMenuItem.separator())
 
         fiveHourHeader = SectionHeaderView(width: menuWidth)
@@ -645,10 +726,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        // Settings submenu hub
-        let settingsItem = NSMenuItem(title: L("menu.settings"), action: nil, keyEquivalent: ",")
-        settingsItem.submenu = buildSettingsMenu()
-        menu.addItem(settingsItem)
+        // Single menu item that opens a real Settings window
+        menu.addItem(NSMenuItem(title: L("menu.settings"),
+                                action: #selector(openSettings), keyEquivalent: ","))
 
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: L("menu.refresh"),    action: #selector(menuRefresh),   keyEquivalent: "r"))
@@ -769,6 +849,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Settings submenus
+
+    @objc func openSettings() {
+        SettingsWindowController.shared.show()
+    }
 
     func buildSettingsMenu() -> NSMenu {
         let m = NSMenu()

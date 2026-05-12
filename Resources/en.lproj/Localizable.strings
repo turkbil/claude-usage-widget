@@ -93,12 +93,19 @@
 "button.ok" = "OK";
 "button.cancel" = "Cancel";
 
+/* Settings window */
+"settings.title" = "Claude Usage Widget — Settings";
+"menu.network" = "Network & integration";
+
 /* §09 Local HTTP + MCP */
 "menu.local_http" = "Local HTTP endpoint (:9123)";
 "menu.mcp_install" = "MCP install instructions…";
 "mcp.install_title" = "Install as MCP server";
 "mcp.install_body" = "Add to ~/.claude.json:\n\n{\n  \"mcpServers\": {\n    \"claude-usage\": {\n      \"command\": \"%@\",\n      \"args\": [\"--mcp-server\"]\n    }\n  }\n}\n\nThen restart Claude Code. Claude will be able to call get_usage to see its own weekly limit.";
 "button.copy_path" = "Copy binary path";
+
+/* §04 Sparkline */
+"sparkline.empty" = "trend data accumulating…";
 
 /* §13 Forecast */
 "forecast.under"    = "↗ Projected end-of-week: %d%%";

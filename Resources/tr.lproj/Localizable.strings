@@ -93,12 +93,19 @@
 "button.ok" = "Tamam";
 "button.cancel" = "İptal";
 
+/* Ayarlar penceresi */
+"settings.title" = "Claude Usage Widget — Ayarlar";
+"menu.network" = "Ağ & entegrasyon";
+
 /* §09 Yerel HTTP + MCP */
 "menu.local_http" = "Yerel HTTP endpoint (:9123)";
 "menu.mcp_install" = "MCP kurulum talimatları…";
 "mcp.install_title" = "MCP sunucusu olarak kur";
 "mcp.install_body" = "~/.claude.json dosyasına ekle:\n\n{\n  \"mcpServers\": {\n    \"claude-usage\": {\n      \"command\": \"%@\",\n      \"args\": [\"--mcp-server\"]\n    }\n  }\n}\n\nSonra Claude Code'u yeniden başlat. Claude artık kendi haftalık limitini görmek için get_usage'ı çağırabilir.";
 "button.copy_path" = "Binary yolunu kopyala";
+
+/* §04 Trend grafiği */
+"sparkline.empty" = "trend verisi birikiyor…";
 
 /* §13 Tahmin */
 "forecast.under"    = "↗ Hafta sonu tahmini: %%%d";
