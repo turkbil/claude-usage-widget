@@ -128,3 +128,9 @@
 "error.org_not_found" = "Organization ID not found";
 "error.http" = "HTTP %d: %@";
 "error.empty_response" = "Empty response";
+
+/* Metric short labels for Settings */
+"metric.weekly_pct"   = "Weekly %";
+"metric.weekly_time"  = "Weekly remaining";
+"metric.five_pct"     = "5-hour %";
+"metric.five_time"    = "5-hour remaining";

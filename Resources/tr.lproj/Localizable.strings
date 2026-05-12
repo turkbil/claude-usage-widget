@@ -128,3 +128,9 @@
 "error.org_not_found" = "Organizasyon ID bulunamadı";
 "error.http" = "HTTP %d: %@";
 "error.empty_response" = "Boş yanıt";
+
+/* Settings metrik etiketleri */
+"metric.weekly_pct"   = "Haftalık %";
+"metric.weekly_time"  = "Haftalık kalan süre";
+"metric.five_pct"     = "5 saatlik %";
+"metric.five_time"    = "5 saatlik kalan süre";

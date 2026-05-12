@@ -110,3 +110,9 @@
 
 /* §04 Sparkline (EN fallback) */
 "sparkline.empty" = "trend data accumulating…";
+
+/* Metric labels (EN fallback) */
+"metric.weekly_pct"   = "Weekly %";
+"metric.weekly_time"  = "Weekly remaining";
+"metric.five_pct"     = "5-hour %";
+"metric.five_time"    = "5-hour remaining";
