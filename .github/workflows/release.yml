@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create releases
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift / Xcode versions
+        run: |
+          swift --version
+          xcode-select -p
+
+      - name: Build the .app
+        run: |
+          ./build.sh
+          ls -la ClaudeUsageWidget.app
+
+      - name: Import Developer ID Application certificate
+        env:
+          CERT_B64:        ${{ secrets.APPLE_DEVELOPER_CERT_BASE64 }}
+          CERT_PWD:        ${{ secrets.APPLE_DEVELOPER_CERT_PASSWORD }}
+          KEYCHAIN_PWD:    ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+
+          # Create a throwaway keychain
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
+          # Add to the search list (so codesign sees it) without losing login keychain
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/"//g')
+
+          # Decode and import the .p12
+          echo -n "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$CERT_PWD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" > /dev/null
+
+          # Sanity check
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Codesign the .app
+        env:
+          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          IDENTITY="Developer ID Application: $(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)".*/\1/')"
+          echo "Signing identity: $IDENTITY"
+
+          codesign --force --deep --options runtime --timestamp \
+            --sign "$IDENTITY" \
+            ClaudeUsageWidget.app
+
+          codesign --verify --strict --verbose=2 ClaudeUsageWidget.app
+
+      - name: Zip for notarization
+        run: |
+          /usr/bin/ditto -c -k --keepParent ClaudeUsageWidget.app ClaudeUsageWidget.zip
+          ls -la ClaudeUsageWidget.zip
+
+      - name: Notarize
+        env:
+          APPLE_ID:     ${{ secrets.APPLE_ID_EMAIL }}
+          APP_PASSWORD: ${{ secrets.APPLE_ID_APP_PASSWORD }}
+          TEAM_ID:      ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool submit ClaudeUsageWidget.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APP_PASSWORD" \
+            --team-id  "$TEAM_ID" \
+            --wait
+
+      - name: Staple the ticket
+        run: |
+          xcrun stapler staple ClaudeUsageWidget.app
+          xcrun stapler validate ClaudeUsageWidget.app
+          # spctl assessment confirms Gatekeeper accepts it
+          spctl --assess --verbose=4 --type execute ClaudeUsageWidget.app || true
+
+      - name: Re-zip stapled .app
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mv ClaudeUsageWidget.zip ClaudeUsageWidget-unsigned-discard.zip || true
+          /usr/bin/ditto -c -k --keepParent ClaudeUsageWidget.app "ClaudeUsageWidget-${VERSION}.zip"
+          ls -la "ClaudeUsageWidget-${VERSION}.zip"
+          shasum -a 256 "ClaudeUsageWidget-${VERSION}.zip" > "ClaudeUsageWidget-${VERSION}.zip.sha256"
+          cat "ClaudeUsageWidget-${VERSION}.zip.sha256"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ env.VERSION }}"
+          generate_release_notes: true
+          files: |
+            ClaudeUsageWidget-${{ env.VERSION }}.zip
+            ClaudeUsageWidget-${{ env.VERSION }}.zip.sha256
