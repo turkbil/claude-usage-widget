@@ -5,151 +5,263 @@
 [![macOS 12+](https://img.shields.io/badge/macOS-12%2B-d68c45?logo=apple)](#requirements)
 [![Signed & notarized](https://img.shields.io/badge/signed%20%26%20notarized-yes-5dc97f?logo=apple)](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
 
-A native macOS menu bar widget that shows your Claude weekly usage percentage and time until reset — at a glance, right next to your weather icon.
+A native macOS menu bar widget that shows your Claude weekly usage at a glance — same data as [claude.ai/settings/usage](https://claude.ai/settings/usage), live in the menu bar, with a rich dropdown.
 
-> On Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
+> Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
 
 [**Türkçe README →**](README.tr.md)
 
 ```
+…  ☀︎ 22°C  🤖 32%  🔊  12:46            ← lives next to your weather icon
+
 ┌──────────────────────────────────────────┐
-│  Nurullah                    [Max 20x]   │
+│  Nurullah                    [Max 20x]   │  ← account name + plan badge
 │  ────────────────────────────────────    │
 │  WEEKLY                  3d 18h left     │
 │   All models   ████████░░░░░░░░░  32%    │
 │   Sonnet       █░░░░░░░░░░░░░░░░   2%    │
+│   ↗ Projected end-of-week: 64%           │  ← burn-rate forecast
+│   ╭───────●─ ─ ─ ─ ─ ─ ─◌╮               │  ← 7-day sparkline + projection
 │  ────────────────────────────────────    │
 │  5-HOUR WINDOW           2h 38m left     │
 │   Usage        ██░░░░░░░░░░░░░░░░  7%    │
 │  ────────────────────────────────────    │
-│           Updated: 12:46 PM              │
+│           Updated: 12:46                 │
 │  ────────────────────────────────────    │
-│  ☐ Show remaining time in title          │
-│    Refresh now                    ⌘R     │
-│    Open claude.ai/settings/usage  ⌘U     │
-│    Quit                           ⌘Q     │
+│    Settings…                       ⌘,    │
+│    Refresh now                     ⌘R    │
+│    Open claude.ai/settings/usage   ⌘U    │
+│    Quit                            ⌘Q    │
+│    nurullah.net ↗      @nurullah ↗       │
 └──────────────────────────────────────────┘
 ```
 
+---
+
 ## Features
 
-- 🎯 **Real Claude weekly limit** — pulls the same `% used` number you see on [claude.ai/settings/usage](https://claude.ai/settings/usage)
-- ⏱ **Countdown to reset** — "3d 18h left" in your menu bar (optional)
-- 🪟 **5-hour window** — separate progress bar for the short-term limit
-- 🎨 **Color-coded bars** — green → yellow → orange → red as you approach the limit
-- 🌍 **Auto-localized** — English, Türkçe, Deutsch, Español, Français (follows your macOS language)
-- 🪶 **~0% CPU at rest** — polls once a minute, watches `~/.claude/projects` for changes
-- 🔒 **No credentials stored** — reads your existing Chrome session cookie via macOS Keychain
-- 🚀 **Auto-starts at login** — installed as a LaunchAgent
+### Menu-bar title
+- 🎯 **Real weekly limit %** from the same API claude.ai itself uses
+- 🍩 **Per-metric display** — each of {weekly %, weekly time, 5-hour %, 5-hour time} can be **hidden**, shown as **text**, or shown as a tiny **inline donut ring** in any color
+- 🤖 **Pick an icon** — 8 emoji presets, your own custom emoji, a percent-filling donut summary, or no icon at all
 
-## Requirements
+### Rich dropdown
+- 📊 Account header (display name + plan badge — `Max 20x`, `Pro`, etc.)
+- 🟢 Color-coded rounded progress bars (green → yellow → orange → red as you approach the limit)
+- 🔮 **Burn-rate forecast** — "↗ Projected end-of-week: 64%" or "⚠ At this pace, limit in ~1d 8h"
+- 📈 **Sparkline trend** — past samples + projected future on a 7-day timeline
+- 🪟 Separate section for the 5-hour rolling window
+- 🌍 **Auto-localized** — English, Türkçe, Deutsch, Español, Français
 
-| Component | Why |
-|---|---|
-| **macOS 12.0+** | Native Cocoa app |
-| **Xcode Command Line Tools** | Provides Swift compiler |
-| **Google Chrome** with an active claude.ai session | The widget reads `sessionKey` from Chrome's cookie store |
-| A **Claude.ai account** (Free, Pro, Max — any tier) | To have weekly usage data to display |
+### Settings window (⌘,)
+- All preferences visible at once, no nested menus
+- Threshold notifications (warn / alert / critical) with sliders
+- Refresh interval (30s · 1m · 5m · 10m)
+- **Global hotkey** to pop the dropdown from anywhere (default ⌥⌘U)
+- **Multi-browser cookie source** — Chrome · Brave · Edge · Arc (Chromium siblings all supported)
 
-> **No browser extension, no API key, no desktop Claude app.** Just Chrome + an active claude.ai login.
+### Integration
+- 🤝 **MCP server mode** — Claude Code itself can read your weekly limit via the bundled `get_usage` tool
+- 🌐 **Local HTTP endpoint** on `127.0.0.1:9123` for Raycast/Alfred/tmux integrations
+- 🖥 **CLI mode** — `ClaudeUsageWidget --print-usage` dumps JSON for shell scripts
 
-If you're not logged into claude.ai in Chrome, the widget will show `⚠︎ No claude.ai session — please log in via Chrome` until you do.
+### Polish
+- ✅ **Signed & notarized** with Apple Developer ID — no Gatekeeper warning
+- 🪶 ~0 % CPU at rest
+- 🔒 **Zero credentials stored** — reads the existing Chrome cookie via macOS Keychain, same trust path Chrome itself uses
+- 🔄 **Auto-update check** against GitHub Releases (no Sparkle, no signup, no third-party)
 
-## Installation
+---
 
-```bash
-git clone https://github.com/YOUR_USERNAME/claude-usage-widget.git
-cd claude-usage-widget
-./build.sh
-open ClaudeUsageWidget.app
-```
+## Quick install
 
-On first launch macOS will ask for **Keychain access** to read the Chrome cookie encryption key. Click **Always Allow**. (This is the same key Chrome itself uses — the widget cannot read anything Chrome can't.)
+1. Download the latest `ClaudeUsageWidget.zip` from the [**Releases page**](https://github.com/turkbil/claude-usage-widget/releases/latest)
+2. Unzip → drag `ClaudeUsageWidget.app` to `/Applications`
+3. Double-click. Because the binary is signed & notarized, macOS opens it without warnings.
+4. (Optional) Right-click the menu-bar icon → Settings → enable **Run at startup**, set your **hotkey**, configure thresholds, etc.
 
 ### Auto-start at login
 
 ```bash
 cp install/local.claude-usage-widget.plist ~/Library/LaunchAgents/
+# Edit the path inside if your .app isn't in /Applications
 launchctl load -w ~/Library/LaunchAgents/local.claude-usage-widget.plist
 ```
-
-> Edit the path inside the plist if you put the `.app` somewhere other than `~/ClaudeUsageWidget/`.
 
 ### Uninstall
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/local.claude-usage-widget.plist
-rm -rf ~/ClaudeUsageWidget ~/Library/LaunchAgents/local.claude-usage-widget.plist ~/.claude-usage-widget-cache.json
+launchctl unload ~/Library/LaunchAgents/local.claude-usage-widget.plist 2>/dev/null
+rm -rf /Applications/ClaudeUsageWidget.app \
+       ~/Library/LaunchAgents/local.claude-usage-widget.plist \
+       ~/.claude-usage-widget-cache.json \
+       ~/.claude-usage-widget-history.json
 defaults delete app.claude-usage-widget 2>/dev/null
 ```
+
+---
+
+## Requirements
+
+| Component | Why |
+|---|---|
+| **macOS 12+** | Native Cocoa app |
+| **A Chromium-based browser** with an active claude.ai session | The widget reads `sessionKey` from the browser's cookie store. Chrome, Brave, Edge, and Arc are all supported — toggle them in Settings → Browsers. |
+| A **Claude.ai account** (Free, Pro, Max — any tier) | To have usage data to display |
+
+> **No browser extension, no API key, no desktop Claude app.** Just a browser + an active claude.ai login.
+
+On first launch macOS will ask for **Keychain access** to read the browser cookie key. Click **Always Allow**.
+
+---
+
+## Settings overview
+
+Open the dropdown → **Settings…** (⌘,)
+
+| Section | What's there |
+|---|---|
+| **Title content** | For each of `Weekly %`, `Weekly remaining`, `5-hour %`, `5-hour remaining`: hide / show as text / show as a donut. When donut, pick from 8 swatch colors. |
+| **Icon** | Emoji preset (🤖🧠⚡✨◉●▲◐), custom emoji (clicking the field opens macOS Emoji Picker automatically), donut summary, or no icon. |
+| **Refresh interval** | 30 s · 1 min · 5 min · 10 min |
+| **Notifications** | Enable threshold alerts. Three macOS-native notifications fire when you cross warn / alert / critical thresholds. Each level fires once per week (re-armed after reset). |
+| **Hotkey** | Toggle global hotkey. Default ⌥⌘U opens the dropdown from anywhere. |
+| **Browsers** | Toggle Chrome, Brave, Edge, Arc. The widget tries each enabled browser in order; the first one with a valid claude.ai session wins. |
+| **Network & integration** | Daily update check · Local HTTP endpoint :9123 · MCP install instructions |
+
+---
+
+## Integration (other tools)
+
+### MCP — Claude Code can see its own limit
+Settings → "MCP install instructions…" gives you a JSON snippet to paste into `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "claude-usage": {
+      "command": "/Applications/ClaudeUsageWidget.app/Contents/MacOS/ClaudeUsageWidget",
+      "args": ["--mcp-server"]
+    }
+  }
+}
+```
+
+After restarting Claude Code, Claude can call `get_usage` to see your weekly limit — useful before a long task.
+
+### Local HTTP — for Raycast/Alfred/tmux/etc.
+Settings → enable **"Local HTTP endpoint (:9123)"**, then:
+
+```bash
+$ curl localhost:9123/usage
+{
+  "display_name": "Nurullah",
+  "fetched_at": "2026-05-13T00:42:00Z",
+  "five_hour_resets_at": "2026-05-13T03:10:00Z",
+  "five_hour_utilization_pct": 7,
+  "plan": "Max 20x",
+  "weekly_resets_at": "2026-05-16T05:00:00Z",
+  "weekly_utilization_pct": 32
+}
+```
+
+Only listens on `127.0.0.1`. Never exposed externally.
+
+### CLI — one-shot JSON
+```bash
+$ /Applications/ClaudeUsageWidget.app/Contents/MacOS/ClaudeUsageWidget --print-usage
+```
+Same JSON, exits immediately. For shell scripts, statuslines.
+
+---
+
+## Building from source
+
+Requires Xcode Command Line Tools.
+
+```bash
+git clone https://github.com/turkbil/claude-usage-widget.git
+cd claude-usage-widget
+./build.sh
+open ClaudeUsageWidget.app
+```
+
+The build produces an unsigned `.app`. For an officially signed/notarized binary, use the Releases page.
+
+---
 
 ## How it works
 
 ```
 ┌──────────────────┐    SQLite + AES-128-CBC      ┌─────────────────┐
-│  Chrome cookies  │ ────────────────────────────▶│  sessionKey     │
-│  (encrypted)     │   key from macOS Keychain    │  (decrypted)    │
+│  Browser cookies │ ────────────────────────────▶│  sessionKey     │
+│  (encrypted)     │  key from macOS Keychain     │  (decrypted)    │
 └──────────────────┘                              └────────┬────────┘
                                                            │
                                           Cookie: sessionKey=...
                                                            ▼
-                              ┌────────────────────────────────────────┐
-                              │ GET claude.ai/api/organizations/{id}/   │
-                              │     usage                              │
-                              │      → seven_day.utilization (32.0)    │
-                              │      → seven_day.resets_at             │
-                              │      → five_hour.utilization (7.0)     │
-                              │      → five_hour.resets_at             │
-                              └────────────────┬───────────────────────┘
-                                               ▼
-                                      ┌─────────────────┐
-                                      │  Menu bar UI    │
-                                      │  refreshes 60s  │
-                                      └─────────────────┘
+                            ┌──────────────────────────────────────────┐
+                            │ GET claude.ai/api/organizations/{id}/    │
+                            │     usage  (seven_day.* + five_hour.*)   │
+                            │ GET claude.ai/api/account     (name)     │
+                            │ GET claude.ai/api/.../rate_limits (plan) │
+                            └────────────────┬─────────────────────────┘
+                                             ▼
+                              ┌──────────────────────────────┐
+                              │  Menu bar UI · refreshes 60s │
+                              │  + history sample / 5min     │
+                              │  + threshold notifications   │
+                              │  + sparkline trend           │
+                              └──────────────────────────────┘
 ```
 
-The widget never sees your password. It uses the same encrypted-cookie + Keychain trick that Chrome itself uses — every macOS browser does this for stored cookies.
+The widget never sees your password. It uses the same encrypted-cookie + Keychain trick the browser itself uses — every macOS browser does this for stored cookies on your own machine.
 
-## Configuration
+---
 
-| Setting | Where | Notes |
-|---|---|---|
-| Show countdown in menu bar title | Menu → "Show remaining time in title" | Off by default. Persisted to `defaults` (UserDefaults). |
-| Color thresholds | `Sources/main.swift` → `UsageRowView.colorFor` | Default: green <50, yellow <75, orange <90, red ≥90 |
-| Poll interval | `Sources/main.swift` → `AppConfig.pollIntervalSec` | Default: 60s |
+## Privacy
+
+- **No telemetry.** No analytics. No crash reports to third parties. The only outbound traffic is HTTPS to `claude.ai` (usage data) and once a day to `api.github.com` (version check, can be disabled).
+- **Cookie never written to disk.** Lives in memory only.
+- **Persisted files** (~70 KB total):
+  - `~/.claude-usage-widget-cache.json` — latest snapshot
+  - `~/.claude-usage-widget-history.json` — 14-day sparkline samples
+- **Settings stored** in `defaults` (UserDefaults).
+
+---
 
 ## Languages
 
-The widget auto-detects your macOS preferred language and falls back to English. Currently bundled:
+The widget auto-detects your macOS preferred language and falls back to English.
 
-- 🇬🇧 English (default)
-- 🇹🇷 Türkçe
-- 🇩🇪 Deutsch
-- 🇪🇸 Español
-- 🇫🇷 Français
+| | |
+|---|---|
+| 🇬🇧 | English (default) |
+| 🇹🇷 | Türkçe |
+| 🇩🇪 | Deutsch |
+| 🇪🇸 | Español |
+| 🇫🇷 | Français |
 
 Want to add a language? Copy `Resources/en.lproj/Localizable.strings` to `Resources/<code>.lproj/Localizable.strings`, translate the values, add the code to `CFBundleLocalizations` in `build.sh`, and open a PR.
 
-## Privacy & security
-
-- **No telemetry.** The widget makes exactly two outbound HTTPS calls per refresh, both to `claude.ai`. Nothing else leaves your machine.
-- **No data sent to third parties.** Your session cookie is read locally and used only against `claude.ai` itself.
-- **Cookie never written to disk.** It lives in memory only.
-- **Cache contains only**: weekly/5-hour utilization percentages, reset timestamps, your display name, your plan label. Stored at `~/.claude-usage-widget-cache.json`.
+---
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `🤖 ?` with "No claude.ai session" | Open Chrome and log into claude.ai |
-| `🤖 ?` with "Keychain access denied" | The first launch shows a Keychain prompt — click **Always Allow**. To reset: open Keychain Access → "Chrome Safe Storage" → Access Control → add ClaudeUsageWidget |
-| `HTTP 401` | Your claude.ai session expired. Re-login via Chrome. |
-| Stale percentage | Click the menu and pick "Refresh now" |
-| Nothing in menu bar | Check `/tmp/claude-usage-widget.err.log` |
+| `🤖 ?` with "No claude.ai session" | Open your browser and log into claude.ai. Make sure the browser you're logged into is enabled in Settings → Browsers. |
+| `🤖 ?` with "Keychain access denied" | The first launch shows a Keychain prompt — click **Always Allow**. To reset: Keychain Access → "Chrome Safe Storage" → Access Control → add ClaudeUsageWidget. |
+| `HTTP 401` | Your claude.ai session expired. Re-login via your browser. |
+| Stale percentage | Open the dropdown → **Refresh now** (⌘R) |
+| Nothing in the menu bar | Check `/tmp/claude-usage-widget.err.log`. Make sure the app is running (`pgrep ClaudeUsageWidget`). |
+| Crash | macOS auto-saves a crash log to `~/Library/Logs/DiagnosticReports/`. Open a GitHub issue and paste it. |
+
+---
 
 ## Author
 
-Built by **Nurullah Okatan** — [nurullah.net](https://www.nurullah.net)
+Built by **Nurullah Okatan** — [nurullah.net](https://www.nurullah.net) · [@nurullah](https://x.com/nurullah)
 
 ## License
 
