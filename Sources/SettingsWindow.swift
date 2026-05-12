@@ -1,7 +1,7 @@
 import AppKit
 
 /// Single settings window. Vertical-scroll only, fixed width, grid-aligned rows.
-final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate {
 
     static let shared = SettingsWindowController()
 
@@ -174,10 +174,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         customRadio.identifier = NSUserInterfaceItemIdentifier("icon:custom")
         iconButtons.append(customRadio)
 
-        let customField = NSTextField(string: "")
+        let customField = EmojiPickerField(string: "")
         customField.placeholderString = "🪐"
         customField.target = self
         customField.action = #selector(updateCustomEmoji(_:))
+        customField.delegate = self                 // listen to live changes too
         customField.font = NSFont.systemFont(ofSize: 16)
         customField.alignment = .center
         customField.widthAnchor.constraint(equalToConstant: 64).isActive = true
@@ -307,8 +308,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let p = PrefsStore.shared.prefs
         let labelText = HotKeyManager.label(keyCode: p.hotkeyKeyCode, modifiers: p.hotkeyModifiers)
         let current = NSTextField(labelWithString: L("hotkey.current", labelText as NSString))
-        current.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .medium)
-        current.textColor = .secondaryLabelColor
+        // System font (not monospaced) renders Unicode key symbols ⌥⌘⇧⌃ cleanly with proper spacing.
+        current.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        current.textColor = .labelColor
 
         let body = NSStackView(views: [enable, current])
         body.orientation = .vertical
@@ -428,6 +430,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let v = sender.stringValue.trimmingCharacters(in: .whitespaces)
         if !v.isEmpty { PrefsStore.shared.update { $0.iconType = .custom; $0.iconValue = v } }
     }
+
+    // Live-save the emoji as soon as the user picks one in the palette.
+    func controlTextDidChange(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField, field === customEmojiField else { return }
+        let v = field.stringValue.trimmingCharacters(in: .whitespaces)
+        if !v.isEmpty {
+            PrefsStore.shared.update { $0.iconType = .custom; $0.iconValue = v }
+        }
+    }
     @objc func pickIconDonut() { PrefsStore.shared.update { $0.iconType = .donut; $0.iconValue = "" } }
     @objc func pickIconNone()  { PrefsStore.shared.update { $0.iconType = .none;  $0.iconValue = "" } }
 
@@ -476,22 +487,123 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         PrefsStore.shared.update { $0.localApiEnabled = (sender.state == .on) }
     }
     @objc func showMCPInstall() {
+        let exe = Bundle.main.executablePath ?? "/path/to/ClaudeUsageWidget"
+        let jsonSnippet = """
+        {
+          "mcpServers": {
+            "claude-usage": {
+              "command": "\(exe)",
+              "args": ["--mcp-server"]
+            }
+          }
+        }
+        """
+
+        // Custom panel: heading, body text, scrollable code block, action buttons.
         let alert = NSAlert()
-        alert.messageText = L("mcp.install_title")
-        alert.informativeText = L("mcp.install_body",
-            (Bundle.main.executablePath ?? "/path/to/ClaudeUsageWidget") as NSString)
+        alert.messageText     = L("mcp.install_title")
+        alert.informativeText = L("mcp.install_intro")
+        alert.alertStyle      = .informational
+        alert.accessoryView   = makeCodeBlockView(json: jsonSnippet, width: 540, height: 170)
+        alert.addButton(withTitle: L("mcp.copy_json"))
         alert.addButton(withTitle: L("button.copy_path"))
         alert.addButton(withTitle: L("button.ok"))
-        if alert.runModal() == .alertFirstButtonReturn {
+
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn:
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(Bundle.main.executablePath ?? "", forType: .string)
+            NSPasteboard.general.setString(jsonSnippet, forType: .string)
+        case .alertSecondButtonReturn:
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(exe, forType: .string)
+        default: break
         }
+    }
+
+    /// Builds a styled, monospaced, selectable code block view.
+    private func makeCodeBlockView(json: String, width: CGFloat, height: CGFloat) -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height + 24))
+
+        // Caption above
+        let caption = NSTextField(labelWithString: L("mcp.add_to_file"))
+        caption.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        caption.textColor = .secondaryLabelColor
+        caption.frame = NSRect(x: 0, y: height + 4, width: width, height: 16)
+        container.addSubview(caption)
+
+        // Rounded background box
+        let box = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        box.wantsLayer = true
+        box.layer?.cornerRadius = 8
+        box.layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.55).cgColor
+        box.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.6).cgColor
+        box.layer?.borderWidth = 1
+
+        // Scrollable, selectable NSTextView with monospace
+        let scroll = NSScrollView(frame: NSRect(x: 12, y: 10, width: width - 24, height: height - 20))
+        scroll.autoresizingMask = [.width, .height]
+        scroll.hasVerticalScroller = true
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+
+        let text = NSTextView(frame: scroll.bounds)
+        text.isEditable = false
+        text.isSelectable = true
+        text.isVerticallyResizable = true
+        text.autoresizingMask = [.width]
+        text.textContainerInset = NSSize(width: 2, height: 2)
+        text.drawsBackground = false
+        text.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        text.textColor = .labelColor
+
+        // Light syntax tinting — keys in amber
+        let attr = NSMutableAttributedString(string: json)
+        attr.addAttributes([
+            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+            .foregroundColor: NSColor.labelColor,
+        ], range: NSRange(location: 0, length: attr.length))
+
+        let ember = NSColor(hex: "#d68c45")
+        let nsStr = attr.string as NSString
+        for token in ["mcpServers", "claude-usage", "command", "args"] {
+            let pattern = "\"\(token)\""
+            var loc = 0
+            while loc < nsStr.length {
+                let searchRange = NSRange(location: loc, length: nsStr.length - loc)
+                let r = nsStr.range(of: pattern, options: [], range: searchRange)
+                if r.location == NSNotFound { break }
+                attr.addAttribute(.foregroundColor, value: ember, range: r)
+                loc = r.location + r.length
+            }
+        }
+        text.textStorage?.setAttributedString(attr)
+
+        scroll.documentView = text
+        box.addSubview(scroll)
+        container.addSubview(box)
+        return container
     }
 }
 
 // Flipped helper so NSScrollView's document view fills top-down.
 private final class FlippedView: NSView {
     override var isFlipped: Bool { true }
+}
+
+// NSTextField that pops the macOS emoji/character picker as soon as it gains focus.
+// Picking an emoji inserts it directly into the field via the system input manager.
+final class EmojiPickerField: NSTextField {
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became {
+            // Defer to next runloop so the field is fully focused first.
+            DispatchQueue.main.async {
+                NSApp.orderFrontCharacterPalette(nil)
+            }
+        }
+        return became
+    }
 }
 
 // MARK: - TitleRowView (one row per metric)

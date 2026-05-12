@@ -51,15 +51,18 @@ final class HotKeyManager {
         if let hk = hotKeyRef { UnregisterEventHotKey(hk); hotKeyRef = nil }
     }
 
-    /// Human-readable label like "⌘⌥U".
+    /// Human-readable label like "⌘ ⌥ U" — hair-space between glyphs so they
+    /// don't visually merge in tight fonts.
     static func label(keyCode: UInt32, modifiers: UInt32) -> String {
-        var out = ""
-        if (modifiers & UInt32(controlKey)) != 0 { out += "⌃" }
-        if (modifiers & UInt32(optionKey))  != 0 { out += "⌥" }
-        if (modifiers & UInt32(shiftKey))   != 0 { out += "⇧" }
-        if (modifiers & UInt32(cmdKey))     != 0 { out += "⌘" }
-        out += keyLabel(for: keyCode)
-        return out
+        // U+202F NARROW NO-BREAK SPACE — looks like a hair gap, never breaks.
+        let sep = "\u{202F}"
+        var parts: [String] = []
+        if (modifiers & UInt32(controlKey)) != 0 { parts.append("⌃") }
+        if (modifiers & UInt32(optionKey))  != 0 { parts.append("⌥") }
+        if (modifiers & UInt32(shiftKey))   != 0 { parts.append("⇧") }
+        if (modifiers & UInt32(cmdKey))     != 0 { parts.append("⌘") }
+        parts.append(keyLabel(for: keyCode))
+        return parts.joined(separator: sep)
     }
 
     private static func keyLabel(for keyCode: UInt32) -> String {

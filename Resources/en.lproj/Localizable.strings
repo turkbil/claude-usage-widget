@@ -134,3 +134,8 @@
 "metric.weekly_time"  = "Weekly remaining";
 "metric.five_pct"     = "5-hour %";
 "metric.five_time"    = "5-hour remaining";
+
+/* MCP install dialog */
+"mcp.install_intro" = "Add this snippet to your ~/.claude.json, then restart Claude Code. Claude will be able to call get_usage to see its own weekly limit.";
+"mcp.add_to_file"   = "~/.claude.json";
+"mcp.copy_json"     = "Copy JSON";

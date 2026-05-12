@@ -134,3 +134,8 @@
 "metric.weekly_time"  = "Haftalık kalan süre";
 "metric.five_pct"     = "5 saatlik %";
 "metric.five_time"    = "5 saatlik kalan süre";
+
+/* MCP kurulum dialog */
+"mcp.install_intro" = "Bu parçayı ~/.claude.json dosyana ekle, sonra Claude Code'u yeniden başlat. Claude artık kendi haftalık limitini görmek için get_usage'ı çağırabilir.";
+"mcp.add_to_file"   = "~/.claude.json";
+"mcp.copy_json"     = "JSON'u kopyala";
