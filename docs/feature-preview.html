@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="tr" class="bg-ink text-bone">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Saha Notları · Claude Usage Widget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200..900;1,9..144,200..900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:       '#0b0a08',
+            ink2:      '#100e0b',
+            surface:   '#15130f',
+            surface2:  '#1d1a14',
+            surface3:  '#2a2519',
+            bone:      '#f4eee3',
+            haze:      '#8a8378',
+            haze2:     '#5b554c',
+            line:      '#2d2820',
+            ember:     '#d68c45',
+            emberDim:  '#5c3a1f',
+            grass:     '#5dc97f',
+            sun:       '#d4c25a',
+            blood:     '#d6645a',
+          },
+          fontFamily: {
+            display: ['Fraunces', 'serif'],
+            sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+          },
+          letterSpacing: {
+            tightest: '-0.05em',
+            tightish: '-0.02em',
+            spaced: '0.18em',
+          },
+        }
+      }
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { background: #0b0a08; }
+    body {
+      background-image:
+        radial-gradient(circle at 18% -10%, rgba(214,140,69,0.10), transparent 45%),
+        radial-gradient(circle at 105% 35%, rgba(93,201,127,0.04), transparent 40%),
+        radial-gradient(circle at -5% 95%, rgba(214,100,90,0.06), transparent 40%);
+      min-height: 100vh;
+    }
+    /* Paper grain */
+    .grain {
+      pointer-events: none;
+      position: fixed; inset: 0;
+      z-index: 1;
+      mix-blend-mode: overlay;
+      opacity: 0.35;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.55 0 0 0 0 0.45 0 0 0 0.25 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .spotlight {
+      pointer-events: none;
+      position: fixed; inset: 0; z-index: 2;
+      background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgba(214,140,69,0.07), transparent 60%);
+      transition: background-position 100ms;
+    }
+    /* Fine rule */
+    .rule { height: 1px; background: linear-gradient(90deg, transparent, currentColor 8%, currentColor 92%, transparent); opacity: 0.16; }
+    .rule-strong { height: 1px; background: currentColor; opacity: 0.18; }
+    /* Soft inset divider on cards */
+    .card {
+      background: rgba(21, 19, 15, 0.6);
+      border: 1px solid rgba(45, 40, 32, 0.7);
+      box-shadow: inset 0 1px 0 rgba(255, 240, 220, 0.03);
+    }
+    /* macOS-style rounded specimens */
+    .mac-pill { border-radius: 10px; }
+    .mac-card { border-radius: 14px; }
+    /* Big lot numbers */
+    .lot {
+      font-family: 'Fraunces', serif;
+      font-variation-settings: 'opsz' 144, 'SOFT' 100, 'wght' 350;
+      font-feature-settings: 'tnum', 'ss01';
+      line-height: 0.85;
+      letter-spacing: -0.04em;
+    }
+    .lot em { font-style: italic; font-variation-settings: 'opsz' 144, 'SOFT' 100, 'wght' 320; }
+    /* Display headlines */
+    .display { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 144, 'SOFT' 60, 'wght' 320; letter-spacing: -0.03em; }
+    .display em { font-style: italic; color: #d68c45; font-variation-settings: 'opsz' 144, 'SOFT' 100, 'wght' 320; }
+    /* Mono caps label */
+    .label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #8a8378; }
+    /* Field annotation: small italic note */
+    .annot { font-family: 'Fraunces', serif; font-style: italic; font-variation-settings: 'opsz' 9, 'SOFT' 100, 'wght' 380; color: #d68c45; font-size: 13px; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1d1a14; border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2d2820; }
+    /* Selection */
+    ::selection { background: rgba(214,140,69,0.35); color: #f4eee3; }
+    /* Stagger reveal */
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) backwards; }
+    /* Toggle */
+    .toggle {
+      width: 36px; height: 20px; border-radius: 999px;
+      background: #2d2820; position: relative; cursor: pointer;
+      transition: background 180ms ease;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #f4eee3;
+      transition: transform 220ms cubic-bezier(0.35, 1.4, 0.5, 1);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    }
+    .toggle[aria-checked="true"] { background: #d68c45; }
+    .toggle[aria-checked="true"]::after { transform: translateX(16px); }
+    /* Checkbox */
+    .check {
+      width: 18px; height: 18px; border-radius: 4px;
+      border: 1px solid #5b554c; background: transparent;
+      display: inline-grid; place-items: center;
+      cursor: pointer; transition: all 150ms;
+    }
+    .check[aria-checked="true"] { background: #d68c45; border-color: #d68c45; }
+    .check svg { opacity: 0; transition: opacity 120ms; }
+    .check[aria-checked="true"] svg { opacity: 1; }
+    /* Radio */
+    .radio {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1px solid #5b554c; background: transparent;
+      display: inline-grid; place-items: center; cursor: pointer;
+      transition: border-color 150ms;
+    }
+    .radio[aria-checked="true"] { border-color: #d68c45; }
+    .radio::after {
+      content: ''; width: 8px; height: 8px; border-radius: 50%;
+      background: #d68c45; transform: scale(0); transition: transform 180ms;
+    }
+    .radio[aria-checked="true"]::after { transform: scale(1); }
+    /* Icon swatch */
+    .swatch {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: #1d1a14; border: 1px solid #2d2820;
+      cursor: pointer; transition: all 180ms;
+      font-size: 22px; line-height: 1;
+    }
+    .swatch:hover { border-color: #5b554c; transform: translateY(-1px); }
+    .swatch[aria-selected="true"] {
+      border-color: #d68c45;
+      background: linear-gradient(180deg, rgba(214,140,69,0.18), rgba(214,140,69,0.06));
+      box-shadow: 0 0 0 3px rgba(214,140,69,0.12);
+    }
+    /* macOS menubar look */
+    .menubar {
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      background: rgba(11, 10, 8, 0.55);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .desktop {
+      background:
+        radial-gradient(ellipse 600px 300px at 30% 50%, rgba(214,140,69,0.25), transparent 50%),
+        radial-gradient(ellipse 500px 400px at 80% 70%, rgba(214,100,90,0.12), transparent 50%),
+        linear-gradient(135deg, #1e1610 0%, #100c0a 100%);
+    }
+    /* SVG sparkline draw-in */
+    @keyframes draw { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+    .draw-on-view { stroke-dasharray: 1000; animation: draw 1.8s ease-out forwards; }
+    /* Donut */
+    .donut-ring { transition: stroke-dasharray 600ms cubic-bezier(0.2, 0.7, 0.3, 1); }
+    /* Hotkey badge */
+    .kbd {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      background: linear-gradient(180deg, #2a2519, #1d1a14);
+      border: 1px solid #2d2820;
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04);
+      color: #f4eee3;
+    }
+    /* Notification bubble */
+    .notification {
+      background: rgba(29, 26, 20, 0.94);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      box-shadow: 0 24px 60px -10px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+    }
+    /* Sticky pinned top */
+    .pinned {
+      position: sticky; top: 0; z-index: 30;
+    }
+    /* Hide app menu items on narrow */
+    @media (max-width: 720px) {
+      .app-menus { display: none; }
+    }
+    /* Marginalia */
+    .marginalia {
+      writing-mode: horizontal-tb;
+    }
+    @media (min-width: 1100px) {
+      .marginalia { position: absolute; left: calc(100% + 56px); top: 0; width: 200px; }
+    }
+    /* Footnote */
+    sup.fn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #d68c45;
+      margin-left: 1px;
+    }
+  </style>
+</head>
+
+<body class="font-sans antialiased text-bone selection:bg-ember/30"
+      x-data="{ mx: '50%', my: '50%' }"
+      @mousemove.throttle.50ms="mx = $event.clientX + 'px'; my = $event.clientY + 'px'"
+      x-init="$el.style.setProperty('--mx', mx); $el.style.setProperty('--my', my)"
+      :style="`--mx: ${mx}; --my: ${my}`">
+
+  <div class="grain"></div>
+  <div class="spotlight"></div>
+
+  <!-- ─────────────────── PINNED LIVE MENUBAR ─────────────────── -->
+  <header class="pinned desktop">
+    <div class="menubar">
+      <div class="mx-auto max-w-[1100px] px-6 h-7 flex items-center justify-between text-[12px]"
+           x-data="topPreview()">
+        <div class="flex items-center gap-5 text-bone/90 app-menus">
+          <span aria-hidden="true" class="text-[14px]"></span>
+          <span class="font-semibold">Safari</span>
+          <span class="text-bone/70">File</span>
+          <span class="text-bone/70">Edit</span>
+          <span class="text-bone/70">View</span>
+          <span class="text-bone/70">Window</span>
+        </div>
+        <div class="flex items-center gap-4 text-bone/95 font-sans">
+          <!-- The widget itself -->
+          <span class="flex items-center gap-1.5 tabular-nums tracking-tight" x-html="title"></span>
+          <span class="text-bone/60">·</span>
+          <span class="text-[11px] tabular-nums">☀︎ 22°C</span>
+          <span class="text-[11px]"></span>
+          <span class="text-[11px]">📶</span>
+          <span class="text-[11px] tabular-nums font-mono" x-text="clock">12:46</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ────────────────────────── MAIN ────────────────────────── -->
+  <main class="relative z-10 mx-auto max-w-[760px] px-6 pt-24 pb-32">
+
+    <!-- ── Cover ── -->
+    <section class="mb-32 rise" style="animation-delay: 0ms;">
+      <div class="label mb-5">Cilt 01 · 2026 · Saha rehberi</div>
+      <h1 class="display text-bone leading-[0.92] mb-7"
+          style="font-size: clamp(56px, 9vw, 104px);">
+        Küçük bir widget'a<br>
+        <em>dair saha notları.</em>
+      </h1>
+      <p class="text-bone/70 leading-relaxed max-w-[540px] text-[17px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        <span class="font-mono text-[15px] text-bone">claude-usage-widget</span> için dokuz öneri —
+        her biri kataloglandı, denenebilir hâle getirildi; seçmek de eksen de senin elinde.
+        Aşağıdaki her örnek etkileşimlidir; en üstteki menü çubuğu seçimlerini canlı yansıtır.
+      </p>
+      <div class="mt-10 flex items-center gap-6 text-haze text-[12px]">
+        <span class="font-mono">Nurullah Okatan</span>
+        <span class="rule-strong text-bone w-12"></span>
+        <span class="font-mono">12 Mayıs 2026</span>
+        <span class="rule-strong text-bone w-12"></span>
+        <span class="font-mono">v0 — taslak</span>
+      </div>
+    </section>
+
+    <!-- ── TOC ── -->
+    <nav class="mb-32 rise" style="animation-delay: 80ms;">
+      <div class="rule-strong text-bone mb-6"></div>
+      <div class="label mb-4">İçindekiler</div>
+      <ol class="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3 text-[14px]">
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">01</span> Başlık içeriği</span>
+          <a href="#sec-01" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">02</span> Simge seçici</span>
+          <a href="#sec-02" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">03</span> Halka (donut) simge</span>
+          <a href="#sec-03" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">04</span> Trend grafiği</span>
+          <a href="#sec-04" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">05</span> Eşik bildirimleri</span>
+          <a href="#sec-05" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">06</span> Yenileme aralığı</span>
+          <a href="#sec-06" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">07</span> Klavye kısayolu</span>
+          <a href="#sec-07" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">08</span> Çoklu tarayıcı</span>
+          <a href="#sec-08" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">09</span> Gizlilik &amp; güncelleme</span>
+          <a href="#sec-09" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+        <li class="flex items-baseline justify-between border-b border-line/60 pb-2">
+          <span><span class="font-mono text-haze text-[11px] mr-3">10</span> Dropdown kredisi</span>
+          <a href="#sec-10" class="text-haze hover:text-ember text-[11px] font-mono">↳ git</a>
+        </li>
+      </ol>
+    </nav>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                       SECTION 01 — Title content                 -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-01" class="mb-32 relative rise" style="animation-delay: 0ms;"
+             x-data="{
+               get d() { return Alpine.store('display') }
+             }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">01</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Başlık <em>içeriği.</em></div>
+          <div class="label">Örnek · canlı önizleme · her veri bağımsız</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Her veri için üç seçenek var: <em class="text-bone">Gizle</em>, <em class="text-bone">Yazı</em> ya da
+        <em class="text-bone">Donut</em>. İstediğin kombinasyonu kur — hepsi yazı, hepsi donut, ya da karışık.
+        Haftalık metrikler amber, 5 saatlik olanlar yeşil renkle çizilir, böylece menü çubuğunda kolayca ayırırsın.
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <template x-for="m in [
+          {key:'weeklyPct',    label:'Haftalık yüzde',         sample:'%32'},
+          {key:'weeklyTime',   label:'Haftalık kalan süre',    sample:'3g 18s'},
+          {key:'fiveHourPct',  label:'5 saatlik yüzde',        sample:'%7'},
+          {key:'fiveHourTime', label:'5 saatlik kalan süre',   sample:'2s 38dk'},
+        ]" :key="m.key">
+          <div class="py-4 border-b border-line/40 last:border-b-0">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-bone text-[14px]" x-text="m.label"></div>
+                <div class="font-mono text-[11px] text-haze mt-0.5" x-text="m.sample"></div>
+              </div>
+              <div class="flex bg-ink2 p-0.5 mac-pill border border-line shrink-0">
+                <button @click="Alpine.store('display')[m.key] = 'hidden'"
+                        :class="d[m.key] === 'hidden' ? 'bg-surface3 text-bone' : 'text-haze hover:text-bone'"
+                        class="px-3 py-1.5 rounded-md text-[11px] font-mono transition-colors">Gizle</button>
+                <button @click="Alpine.store('display')[m.key] = 'text'"
+                        :class="d[m.key] === 'text' ? 'bg-surface3 text-bone' : 'text-haze hover:text-bone'"
+                        class="px-3 py-1.5 rounded-md text-[11px] font-mono transition-colors">Yazı</button>
+                <button @click="Alpine.store('display')[m.key] = 'donut'"
+                        :class="d[m.key] === 'donut' ? 'bg-surface3 text-bone' : 'text-haze hover:text-bone'"
+                        class="px-3 py-1.5 rounded-md text-[11px] font-mono transition-colors flex items-center gap-1.5">
+                  <svg width="10" height="10" viewBox="0 0 36 36" class="-rotate-90">
+                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="currentColor" stroke-width="6" opacity="0.3"/>
+                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="currentColor" stroke-width="6"
+                            stroke-dasharray="40, 100" stroke-linecap="round"/>
+                  </svg>
+                  Donut
+                </button>
+              </div>
+            </div>
+            <!-- Color picker — only visible in donut mode -->
+            <div x-show="d[m.key] === 'donut'" x-transition.opacity.duration.200ms
+                 class="mt-3 pl-1 flex items-center gap-3">
+              <span class="label">renk</span>
+              <div class="flex items-center gap-1.5">
+                <template x-for="c in ['#d68c45','#5dc97f','#d4c25a','#d6645a','#a87fd6','#7fb8b8','#f4eee3','#8a8378']" :key="c">
+                  <button @click="Alpine.store('colors')[m.key] = c"
+                          :style="`background: ${c}`"
+                          :class="$store.colors[m.key] === c ? 'ring-2 ring-bone/30 scale-110' : 'opacity-65 hover:opacity-100'"
+                          class="w-5 h-5 rounded-full transition-all"
+                          :title="c"></button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div class="rule text-bone my-7"></div>
+
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <span class="label">oluşan başlık</span>
+          <span class="font-mono text-[14px] text-bone bg-ink/60 px-3 py-2 mac-pill border border-line inline-flex items-center gap-1.5"
+                x-html="$store.computed.titleResult()"></span>
+        </div>
+      </div>
+      <p class="annot mt-4">↑ Yapışık menü çubuğu seçimlerini anlık yansıtır. Amber = haftalık, yeşil = 5 saatlik.</p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                       SECTION 02 — Icon picker                   -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-02" class="mb-32 rise"
+             x-data="{
+               icons: ['🤖','🧠','⚡','✨','◉','●','▲','◐'],
+               get sel() { return Alpine.store('icon') },
+               setEmoji(e) { Alpine.store('icon').type = 'emoji'; Alpine.store('icon').value = e; },
+               setCustom() { Alpine.store('icon').type = 'custom'; },
+               setNone() { Alpine.store('icon').type = 'none'; Alpine.store('icon').value = ''; },
+               setDonut() { Alpine.store('icon').type = 'donut'; Alpine.store('icon').value = ''; },
+             }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">02</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Simge <em>seçici.</em></div>
+          <div class="label">Örnek · 4 mod</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Varsayılan robot. Hazır setten seç, kendi emojini yaz, simgeyi tamamen gizle ya da haftalık yüzdeyi
+        özetleyen küçük bir halkayla değiştir (halkanın ayrıntısı için §03'e bak).
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <!-- Mode switcher -->
+        <div class="flex items-center gap-1 mb-6 font-mono text-[11px] text-haze">
+          <button @click="setEmoji(sel.value || '🤖')"
+                  :class="sel.type === 'emoji' ? 'bg-surface3 text-bone' : 'bg-transparent hover:text-bone'"
+                  class="px-3 py-1.5 rounded transition-colors">EMOJİ</button>
+          <button @click="setCustom()"
+                  :class="sel.type === 'custom' ? 'bg-surface3 text-bone' : 'bg-transparent hover:text-bone'"
+                  class="px-3 py-1.5 rounded transition-colors">ÖZEL</button>
+          <button @click="setDonut()"
+                  :class="sel.type === 'donut' ? 'bg-surface3 text-bone' : 'bg-transparent hover:text-bone'"
+                  class="px-3 py-1.5 rounded transition-colors">DONUT</button>
+          <button @click="setNone()"
+                  :class="sel.type === 'none' ? 'bg-surface3 text-bone' : 'bg-transparent hover:text-bone'"
+                  class="px-3 py-1.5 rounded transition-colors">YOK</button>
+        </div>
+
+        <!-- Emoji grid -->
+        <div x-show="sel.type === 'emoji'" x-transition.opacity class="grid grid-cols-8 gap-2">
+          <template x-for="e in icons" :key="e">
+            <button class="swatch"
+                    :aria-selected="sel.value === e"
+                    @click="setEmoji(e)" x-text="e"></button>
+          </template>
+        </div>
+
+        <!-- Custom emoji -->
+        <div x-show="sel.type === 'custom'" x-transition.opacity class="flex items-center gap-4">
+          <label class="label">kendi emojin</label>
+          <input type="text" maxlength="2"
+                 x-model="$store.icon.value"
+                 placeholder="🪐"
+                 class="bg-ink2 border border-line text-bone font-sans text-[22px] w-16 h-14 text-center rounded-lg focus:outline-none focus:border-ember">
+          <span class="text-haze text-[12px]">tek karakter — her unicode emoji çalışır</span>
+        </div>
+
+        <!-- Donut preview -->
+        <div x-show="sel.type === 'donut'" x-transition.opacity class="flex items-center gap-6">
+          <svg width="64" height="64" viewBox="0 0 36 36" class="-rotate-90">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#2d2820" stroke-width="3.2"/>
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#d68c45" stroke-width="3.2"
+                    stroke-dasharray="28 100" stroke-linecap="round" class="donut-ring"/>
+          </svg>
+          <div class="text-haze text-[12px] leading-relaxed">
+            Simge yerine küçük bir halka çizilir;<br>
+            sayı yerine dolum miktarı görünür.
+          </div>
+        </div>
+
+        <!-- None -->
+        <div x-show="sel.type === 'none'" x-transition.opacity class="text-haze text-[12px]">
+          Simge yok — sadece §01'de seçtiğin veriler görünür.
+        </div>
+
+        <div class="rule text-bone my-7"></div>
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <span class="label">oluşan başlık</span>
+          <span class="font-mono text-[14px] text-bone bg-ink/60 px-3 py-2 mac-pill border border-line inline-flex items-center gap-1.5"
+                x-html="$store.computed.titleResult()"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                       SECTION 03 — Donut ring                    -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-03" class="mb-32 rise"
+             x-data="{
+               pct: 32,
+               get color() {
+                 if (this.pct >= 90) return '#d6645a';
+                 if (this.pct >= 75) return '#d68c45';
+                 if (this.pct >= 50) return '#d4c25a';
+                 return '#5dc97f';
+               },
+               get dash() { return `${this.pct * 1.005} 100`; }
+             }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">03</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Halka <em>(donut).</em></div>
+          <div class="label">Örnek · alternatif simge</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Emoji yerine yüzdeyi simgenin kendisi olarak çiz — limite yaklaştıkça yeşilden sarıya, oradan
+        amber ve kırmızıya dönen küçük bir halka. Yazıyı gizlediğin durumda da iyi durur.
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <div class="grid sm:grid-cols-[1fr_auto] items-center gap-8">
+          <div>
+            <div class="label mb-2">test için sürükle</div>
+            <input type="range" min="0" max="100" x-model.number="pct"
+                   class="w-full accent-ember">
+            <div class="font-mono text-[11px] text-haze mt-2 flex justify-between">
+              <span>0 %</span><span>50 %</span><span>100 %</span>
+            </div>
+            <div class="mt-6 grid grid-cols-4 gap-2 text-center text-[10px] font-mono">
+              <div class="p-2 border" :class="pct < 50 ? 'border-grass text-grass' : 'border-line text-haze'">&lt; 50</div>
+              <div class="p-2 border" :class="pct >= 50 && pct < 75 ? 'border-sun text-sun' : 'border-line text-haze'">50–75</div>
+              <div class="p-2 border" :class="pct >= 75 && pct < 90 ? 'border-ember text-ember' : 'border-line text-haze'">75–90</div>
+              <div class="p-2 border" :class="pct >= 90 ? 'border-blood text-blood' : 'border-line text-haze'">≥ 90</div>
+            </div>
+          </div>
+          <div class="flex flex-col items-center gap-3">
+            <svg width="120" height="120" viewBox="0 0 36 36" class="-rotate-90">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#2d2820" stroke-width="3.6"/>
+              <circle cx="18" cy="18" r="14" fill="none"
+                      :stroke="color" stroke-width="3.6"
+                      :stroke-dasharray="dash" stroke-linecap="round"
+                      class="donut-ring"/>
+            </svg>
+            <div class="font-mono text-[12px] text-bone tabular-nums" x-text="`${pct}%`"></div>
+          </div>
+        </div>
+      </div>
+      <p class="annot mt-4">↑ Aynı renk sistemi (yeşil &lt; 50, kırmızı ≥ 90). §01'de bağımsız renk de seçilebilir.</p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                       SECTION 04 — Sparkline                     -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-04" class="mb-32 rise" x-data="sparklineDemo()">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">04</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Trend <em>grafiği.</em></div>
+          <div class="label">Örnek · popup içi mini chart</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Dropdown'un içinde son 24 saatin (veya 7 günün) küçük bir çizgi grafiği. Trendi anlık olarak görmeni
+        sağlar — ekrandan büyük yer kaplamadan. Üstte bir önceki periyoda göre fark da yazılır.
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <div class="flex items-center gap-2 mb-5 font-mono text-[11px]">
+          <button @click="range='24h'; regenerate()"
+                  :class="range==='24h' ? 'text-bone bg-surface3' : 'text-haze hover:text-bone'"
+                  class="px-3 py-1 rounded">24 SAAT</button>
+          <button @click="range='7d'; regenerate()"
+                  :class="range==='7d' ? 'text-bone bg-surface3' : 'text-haze hover:text-bone'"
+                  class="px-3 py-1 rounded">7 GÜN</button>
+          <button @click="range='30d'; regenerate()"
+                  :class="range==='30d' ? 'text-bone bg-surface3' : 'text-haze hover:text-bone'"
+                  class="px-3 py-1 rounded">30 GÜN</button>
+        </div>
+
+        <div class="bg-ink2 mac-card p-5 relative">
+          <div class="flex items-baseline justify-between mb-4">
+            <div>
+              <div class="label">trend · haftalık</div>
+              <div class="font-display text-3xl text-bone mt-1" style="font-variation-settings: 'opsz' 36, 'wght' 400;">
+                <span x-text="current">32</span><span class="text-haze text-2xl">%</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-mono text-[10px] text-haze">ÖNCEKİYE GÖRE</div>
+              <div class="font-mono text-[12px]"
+                   :class="delta >= 0 ? 'text-ember' : 'text-grass'"
+                   x-text="(delta >= 0 ? '+' : '') + delta + '%'"></div>
+            </div>
+          </div>
+          <svg viewBox="0 0 320 80" class="w-full h-20">
+            <defs>
+              <linearGradient id="spark-fill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#d68c45" stop-opacity="0.32"/>
+                <stop offset="100%" stop-color="#d68c45" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path :d="areaPath" fill="url(#spark-fill)" class="transition-all duration-700"/>
+            <path :d="linePath" fill="none" stroke="#d68c45" stroke-width="1.5" stroke-linejoin="round"
+                  stroke-linecap="round" class="transition-all duration-700"/>
+            <template x-for="(p, i) in points" :key="i">
+              <circle :cx="p.x" :cy="p.y" r="1.4" fill="#d68c45" opacity="0.6"/>
+            </template>
+          </svg>
+          <div class="flex items-baseline justify-between mt-3 font-mono text-[10px] text-haze">
+            <span x-text="labels[0]"></span>
+            <span x-text="labels[1]"></span>
+            <span x-text="labels[2]"></span>
+          </div>
+        </div>
+        <p class="annot mt-5">↑ "Bu hızla Cuma akşamı limite ulaşırsın" gibi tahmin satırı üste eklenebilir.</p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                  SECTION 05 — Threshold alerts                   -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-05" class="mb-32 rise" x-data="{
+      enabled: true,
+      warn: 50,
+      alert: 75,
+      critical: 90,
+      currentExample: 'warn',
+    }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">05</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Eşik <em>bildirimleri.</em></div>
+          <div class="label">Örnek · macOS notification</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Kullanım belirli bir eşiği geçtiğinde native macOS bildirimi al. Üç seviye var — varsayılan değerleri
+        aşağıdan ayarla; istemediğin zaman tek tuşla kapat.
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <div class="flex items-center justify-between mb-7 pb-5 border-b border-line/60">
+          <div>
+            <div class="text-bone text-[14px]">Eşik bildirimlerini etkinleştir</div>
+            <div class="text-haze text-[12px] mt-0.5">macOS Bildirim Merkezi üzerinden gönderilir.</div>
+          </div>
+          <button class="toggle" :aria-checked="enabled" @click="enabled = !enabled"></button>
+        </div>
+
+        <div class="space-y-5 mb-7" :class="!enabled && 'opacity-40 pointer-events-none'">
+          <!-- Warn -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-[13px] flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-sun inline-block"></span>
+                Uyarı
+              </label>
+              <span class="font-mono text-[12px] text-bone tabular-nums" x-text="`%${warn}`"></span>
+            </div>
+            <input type="range" min="20" max="80" x-model.number="warn"
+                   @input="currentExample='warn'" class="w-full accent-sun">
+          </div>
+          <!-- Alert -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-[13px] flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-ember inline-block"></span>
+                Alarm
+              </label>
+              <span class="font-mono text-[12px] text-bone tabular-nums" x-text="`%${alert}`"></span>
+            </div>
+            <input type="range" min="50" max="95" x-model.number="alert"
+                   @input="currentExample='alert'" class="w-full accent-ember">
+          </div>
+          <!-- Critical -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-[13px] flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-blood inline-block"></span>
+                Kritik
+              </label>
+              <span class="font-mono text-[12px] text-bone tabular-nums" x-text="`%${critical}`"></span>
+            </div>
+            <input type="range" min="70" max="99" x-model.number="critical"
+                   @input="currentExample='critical'" class="w-full accent-red-500">
+          </div>
+        </div>
+
+        <!-- Sample notification -->
+        <div class="label mb-3">önizleme · örnek bildirim</div>
+        <div class="notification p-3.5 flex items-start gap-3 max-w-[400px]">
+          <div class="w-10 h-10 mac-pill bg-gradient-to-br from-ember to-emberDim flex items-center justify-center text-[20px]">🤖</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-bone text-[13px] font-semibold">Claude Usage Widget</span>
+              <span class="text-haze text-[10px] font-mono">şimdi</span>
+            </div>
+            <div class="text-bone text-[13px] mt-0.5 leading-snug"
+                 x-text="currentExample==='warn' ? `Haftalık kullanım %${warn}'e ulaştı — haftanın geri kalanı için yavaşla.` :
+                         currentExample==='alert' ? `Haftalık kullanım %${alert} — yaklaşık 3 gün kaldı.` :
+                         `Haftalık kullanım kritik %${critical} — yoğun oturumları ertelemeyi düşün.`"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                  SECTION 06 — Refresh interval                   -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-06" class="mb-32 rise" x-data="{ interval: '60' }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">06</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Yenileme <em>aralığı.</em></div>
+          <div class="label">Örnek · sorgu sıklığı</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Widget'ın claude.ai'a ne sıklıkta soru sorduğu. Varsayılan 60 saniye. 30s daha hızlı yakalar;
+        10dk pil ve fanlar için daha sakindir.
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <template x-for="opt in [
+            {value:'30',  label:'30 sn',  sub:'agresif'},
+            {value:'60',  label:'1 dk',   sub:'varsayılan'},
+            {value:'300', label:'5 dk',   sub:'rahat'},
+            {value:'600', label:'10 dk',  sub:'pil dostu'},
+          ]" :key="opt.value">
+            <button @click="interval = opt.value"
+                    :class="interval === opt.value ? 'border-ember bg-gradient-to-b from-ember/15 to-ember/0' : 'border-line hover:border-haze2'"
+                    class="border p-4 mac-pill text-left transition-all">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="radio" :aria-checked="interval === opt.value"></span>
+                <span class="text-bone text-[14px] font-mono" x-text="opt.label"></span>
+              </div>
+              <div class="text-haze text-[11px] pl-6" x-text="opt.sub"></div>
+            </button>
+          </template>
+        </div>
+
+        <div class="rule text-bone mb-5"></div>
+        <div class="flex items-center justify-between text-[12px]">
+          <span class="label">saatlik api çağrısı</span>
+          <span class="font-mono text-bone tabular-nums" x-text="Math.round(3600 / interval)"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                   SECTION 07 — Global hotkey                     -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-07" class="mb-32 rise" x-data="hotkeyDemo()">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">07</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Klavye <em>kısayolu.</em></div>
+          <div class="label">Örnek · tuş kombinasyonu yakalama</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Widget popup'ını her yerden tek tuş kombinasyonu ile aç. Aşağıdaki kutuya tıkla, istediğin
+        kombinasyonu bas. Önerilen varsayılan: <span class="kbd inline-block ml-1">⌥ ⌘ U</span>
+      </p>
+
+      <div class="card p-6 sm:p-7">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div class="text-bone text-[14px]">Widget popup'ını aç</div>
+            <div class="text-haze text-[12px] mt-0.5">Burası seçiliyken kombinasyonu bas.</div>
+          </div>
+          <button @click="capturing = true; pressed = []"
+                  @keydown.window.prevent.stop="capture($event)"
+                  class="px-4 py-3 mac-pill border min-w-[180px] text-right"
+                  :class="capturing ? 'border-ember bg-ember/10' : 'border-line hover:border-haze2'">
+            <template x-if="!capturing && pressed.length === 0">
+              <span class="text-haze text-[12px]">kaydetmek için tıkla</span>
+            </template>
+            <template x-if="capturing && pressed.length === 0">
+              <span class="text-ember text-[12px] animate-pulse">şimdi bas…</span>
+            </template>
+            <template x-if="pressed.length > 0">
+              <span class="flex items-center gap-1 justify-end">
+                <template x-for="k in pressed" :key="k">
+                  <span class="kbd" x-text="k"></span>
+                </template>
+              </span>
+            </template>
+          </button>
+        </div>
+        <div class="mt-5 flex items-center gap-2 text-haze text-[11px] font-mono">
+          <span>ipucu:</span>
+          <span class="kbd">⌥</span> Option ·
+          <span class="kbd">⌘</span> Command ·
+          <span class="kbd">⌃</span> Control ·
+          <span class="kbd">⇧</span> Shift
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                   SECTION 08 — Multi-browser                     -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-08" class="mb-32 rise" x-data="{
+      browsers: [
+        { id:'chrome',  name:'Google Chrome',     enabled:true,  profile:'Default', icon:'🟢', engine:'chromium', path:'~/Library/Application Support/Google/Chrome/Default' },
+        { id:'brave',   name:'Brave Browser',     enabled:false, profile:'Default', icon:'🦁', engine:'chromium', path:'~/Library/Application Support/BraveSoftware/Brave-Browser/Default' },
+        { id:'edge',    name:'Microsoft Edge',    enabled:false, profile:'Default', icon:'🟦', engine:'chromium', path:'~/Library/Application Support/Microsoft Edge/Default' },
+        { id:'arc',     name:'Arc',               enabled:false, profile:'Default', icon:'🏹', engine:'chromium', path:'~/Library/Application Support/Arc/User Data/Default' },
+        { id:'firefox', name:'Firefox',           enabled:false, profile:'default-release', icon:'🦊', engine:'gecko',  path:'~/Library/Application Support/Firefox/Profiles/' },
+        { id:'safari',  name:'Safari',            enabled:false, profile:'—', icon:'🧭', engine:'webkit', path:'~/Library/Containers/com.apple.Safari/Data/Library/Cookies/' },
+      ]
+    }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">08</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Çoklu <em>tarayıcı.</em></div>
+          <div class="label">Örnek · cookie kaynakları</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Chromium ailesi (Chrome, Brave, Edge, Arc) aynı şifreli cookie düzenini paylaşır.
+        Firefox ve Safari farklı motorlar kullanır — Firefox'ta cookie'ler SQLite içinde
+        düz metin, Safari'de ise binary format. Birden fazla tarayıcı açıksa widget
+        ilk geçerli oturumu bulduğu yerden okur.
+      </p>
+
+      <div class="card p-6 sm:p-7 space-y-2.5">
+        <template x-for="(b, i) in browsers" :key="b.id">
+          <div class="flex items-center gap-4 p-3 mac-pill transition-colors"
+               :class="b.enabled ? 'bg-surface3/40' : 'bg-transparent'">
+            <button class="toggle shrink-0" :aria-checked="b.enabled" @click="b.enabled = !b.enabled"></button>
+            <div class="text-2xl" x-text="b.icon"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-bone text-[14px]" x-text="b.name"></span>
+                <span class="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      :class="b.engine === 'chromium' ? 'bg-grass/15 text-grass' :
+                              b.engine === 'gecko'    ? 'bg-ember/15 text-ember' :
+                                                        'bg-sun/15 text-sun'"
+                      x-text="b.engine"></span>
+                <template x-if="b.id === 'safari'">
+                  <span class="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-blood/15 text-blood">
+                    Tam Disk Erişimi gerekli
+                  </span>
+                </template>
+              </div>
+              <div class="text-haze text-[10px] font-mono truncate mt-0.5" x-text="b.path"></div>
+            </div>
+            <select x-model="b.profile" :disabled="!b.enabled || b.id === 'safari'"
+                    class="bg-ink2 border border-line text-bone text-[12px] px-2 py-1 mac-pill focus:outline-none focus:border-ember disabled:opacity-40">
+              <template x-if="b.engine === 'chromium'">
+                <optgroup label="Chromium">
+                  <option>Default</option>
+                  <option>Profile 1</option>
+                  <option>Profile 2</option>
+                  <option>Work</option>
+                </optgroup>
+              </template>
+              <template x-if="b.engine === 'gecko'">
+                <optgroup label="Firefox">
+                  <option>default-release</option>
+                  <option>dev-edition-default</option>
+                </optgroup>
+              </template>
+              <template x-if="b.engine === 'webkit'">
+                <option>—</option>
+              </template>
+            </select>
+          </div>
+        </template>
+      </div>
+      <p class="annot mt-4">↑ İlk aktif oturumu bulan tarayıcı kazanır. Safari için bir kerelik
+        Sistem Ayarları → Gizlilik &amp; Güvenlik → Tam Disk Erişimi.</p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--                  SECTION 09 — Privacy & update                   -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <section id="sec-09" class="mb-32 rise" x-data="{
+      versionCheck: true,
+      localApi: false,
+      mcpServer: false,
+    }">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">09</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Gizlilik &amp; <em>güncelleme.</em></div>
+          <div class="label">Örnek · sıkıcı ama gerekli ayarlar</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Görünmeyen ama gerekli kısımlar. Yeni sürüm uyarısı GitHub Releases'i kontrol eder
+        (üyelik/imza gerektirmez). Çökme raporları için macOS'in kendi crash log'larına güveniyoruz —
+        kullanıcı sorun bildirirken o dosyayı paylaşır. Yerel HTTP ve MCP modları, başka araçların —
+        Claude Code dahil — canlı veriyi görmesini sağlar.
+      </p>
+
+      <div class="card divide-y divide-line/50">
+        <!-- Version check -->
+        <div class="p-5 flex items-start gap-4">
+          <div class="flex-1">
+            <div class="text-bone text-[14px] mb-1">Yeni sürüm uyarısı</div>
+            <div class="text-haze text-[12px]">GitHub Releases'i günde bir kontrol eder. Yenisi varsa dropdown'a küçük rozet çıkar — tıklayınca Releases sayfası açılır, kullanıcı manuel indirir.</div>
+          </div>
+          <button class="toggle shrink-0 mt-1" :aria-checked="versionCheck" @click="versionCheck = !versionCheck"></button>
+        </div>
+        <!-- Local HTTP -->
+        <div class="p-5 flex items-start gap-4">
+          <div class="flex-1">
+            <div class="text-bone text-[14px] mb-1">Yerel HTTP endpoint
+              <span class="kbd ml-1.5">:9123</span>
+            </div>
+            <div class="text-haze text-[12px]"><span class="font-mono">GET localhost:9123/usage</span> · JSON · sadece localhost.</div>
+          </div>
+          <button class="toggle shrink-0 mt-1" :aria-checked="localApi" @click="localApi = !localApi"></button>
+        </div>
+        <!-- MCP server -->
+        <div class="p-5 flex items-start gap-4">
+          <div class="flex-1">
+            <div class="text-bone text-[14px] mb-1">MCP sunucu modu</div>
+            <div class="text-haze text-[12px]"><span class="font-mono">get_usage</span> aracını sunar — Claude Code kendi limitini görebilir.</div>
+          </div>
+          <button class="toggle shrink-0 mt-1" :aria-checked="mcpServer" @click="mcpServer = !mcpServer"></button>
+        </div>
+      </div>
+
+      <div class="mt-6 p-4 border border-line/60 mac-pill bg-ink2/40">
+        <div class="label mb-1.5">Çökme raporu</div>
+        <p class="text-haze text-[12px] leading-relaxed">
+          Üçüncü taraf hata izleme (Sentry vb.) yok. Çökme yaşarsan macOS otomatik olarak
+          <span class="font-mono text-bone/85">~/Library/Logs/DiagnosticReports/</span> altına <span class="font-mono text-bone/85">.ips</span>
+          dosyası yazar. GitHub issue açarken o dosyayı yapıştır — bir kere yeter.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── Dropdown footer credit (mockup) ── -->
+    <section id="sec-10" class="mb-24 rise">
+      <div class="flex items-baseline gap-6 mb-8">
+        <div class="lot text-ember text-[88px]">10</div>
+        <div>
+          <div class="display text-bone text-3xl mb-1">Dropdown <em>kredisi.</em></div>
+          <div class="label">Örnek · widget alt satırı</div>
+        </div>
+      </div>
+      <p class="text-bone/75 leading-relaxed mb-10 max-w-[560px] text-[15.5px]"
+         style="font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 14, 'SOFT' 100, 'wght' 380;">
+        Widget dropdown'unun en altına minimal bir kredi satırı. İsim → siteni açar, X handle → profilini.
+        Diğer Mac menubar app'lerinde standart bir uygulamadır; ego değil, ekosistem kuralı.
+      </p>
+
+      <div class="card p-0 overflow-hidden mac-card max-w-[320px]">
+        <!-- Fake dropdown content -->
+        <div class="px-4 py-3 border-b border-line/40">
+          <div class="flex items-center justify-between">
+            <span class="text-bone text-[12px] font-semibold">Nurullah</span>
+            <span class="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ember/15 text-ember">Max 20x</span>
+          </div>
+        </div>
+        <div class="px-4 py-2.5 text-[10px] font-mono text-haze tracking-spaced uppercase">Bu hafta · 3g 18s kaldı</div>
+        <div class="px-4 py-2 flex items-center gap-3">
+          <span class="text-bone text-[12px] flex-1">Tüm modeller</span>
+          <div class="w-24 h-1.5 bg-line rounded-full overflow-hidden"><div class="h-full bg-ember" style="width: 32%"></div></div>
+          <span class="font-mono text-[11px] text-ember tabular-nums w-8 text-right">%32</span>
+        </div>
+        <div class="px-4 py-2 flex items-center gap-3">
+          <span class="text-bone text-[12px] flex-1">Sonnet</span>
+          <div class="w-24 h-1.5 bg-line rounded-full overflow-hidden"><div class="h-full bg-grass" style="width: 2%"></div></div>
+          <span class="font-mono text-[11px] text-grass tabular-nums w-8 text-right">%2</span>
+        </div>
+        <div class="px-4 py-2 mt-1 text-[11px] text-haze text-center border-t border-line/40">Güncelleme: 12:46</div>
+        <div class="px-4 py-2 text-[12px] text-bone/85 border-t border-line/40">Şimdi yenile</div>
+        <div class="px-4 py-2 text-[12px] text-bone/85">claude.ai aç</div>
+        <div class="px-4 py-2 text-[12px] text-bone/85 border-t border-line/40">Çıkış</div>
+        <!-- The credit footer -->
+        <div class="px-4 py-2.5 border-t border-line/40 flex items-center justify-center gap-2 text-[10px] text-haze">
+          <a href="https://www.nurullah.net" target="_blank" class="hover:text-ember transition-colors">Nurullah Okatan ↗</a>
+          <span class="text-haze/40">·</span>
+          <a href="https://x.com/nurullah" target="_blank" class="hover:text-ember transition-colors">@nurullah ↗</a>
+        </div>
+      </div>
+      <p class="annot mt-4">↑ İki link: isim → nurullah.net, handle → x.com/nurullah</p>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="mt-32 pt-12 border-t border-line">
+      <div class="flex flex-col sm:flex-row justify-between items-start gap-6">
+        <div>
+          <div class="display text-bone text-2xl mb-2"><em>Notların sonu.</em></div>
+          <p class="text-haze text-[13px] max-w-[400px] leading-relaxed">
+            Önce hangi bölümlerin uygulanacağına karar ver. Mevcut widget MIT lisansıyla açık kaynak,
+            <a href="https://github.com/turkbil/claude-usage-widget" class="text-ember underline-offset-4 hover:underline">github.com/turkbil/claude-usage-widget</a> adresinde.
+          </p>
+        </div>
+        <div class="text-right text-[11px] font-mono text-haze">
+          <div class="text-bone">Nurullah Okatan</div>
+          <div><a href="https://www.nurullah.net" target="_blank" class="text-ember hover:underline">nurullah.net</a></div>
+          <div><a href="https://x.com/nurullah" target="_blank" class="text-ember hover:underline">@nurullah</a></div>
+          <div class="mt-4">v0 — 12 Mayıs 2026</div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ────────────────────────────── ALPINE ──────────────────────────── -->
+  <script>
+    document.addEventListener('alpine:init', () => {
+      // Each metric: 'hidden' | 'text' | 'donut'
+      Alpine.store('display', {
+        weeklyPct:    'text',
+        weeklyTime:   'text',
+        fiveHourPct:  'hidden',
+        fiveHourTime: 'hidden',
+      });
+      // Per-metric donut color
+      Alpine.store('colors', {
+        weeklyPct:    '#d68c45', // ember
+        weeklyTime:   '#d68c45',
+        fiveHourPct:  '#5dc97f', // grass
+        fiveHourTime: '#5dc97f',
+      });
+      Alpine.store('icon', {
+        type: 'emoji',
+        value: '🤖',
+      });
+      Alpine.store('data', {
+        weeklyPct: 32,
+        weeklyTime: '3g 18s',
+        weeklyTimeFill: 46,    // % of weekly window already elapsed
+        fiveHourPct: 7,
+        fiveHourTime: '2s 38dk',
+        fiveHourTimeFill: 47,  // % of 5-hour window already elapsed
+      });
+      Alpine.store('computed', {
+        donutSvg(fill, color, size = 11) {
+          const f = Math.max(0.5, Math.min(100, fill));
+          return `<svg width="${size}" height="${size}" viewBox="0 0 36 36"
+            class="-rotate-90 inline-block align-[-2px]">
+            <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(120,110,95,0.42)" stroke-width="6"/>
+            <circle cx="18" cy="18" r="15.915" fill="none" stroke="${color}" stroke-width="6"
+              stroke-dasharray="${f}, 100" stroke-linecap="round"/>
+          </svg>`;
+        },
+        titleResult() {
+          const d = Alpine.store('display');
+          const c = Alpine.store('colors');
+          const data = Alpine.store('data');
+          const icon = Alpine.store('icon');
+          const parts = [];
+
+          // Prefix icon
+          if (icon.type === 'emoji' || icon.type === 'custom') {
+            if (icon.value && icon.value.trim()) parts.push(icon.value);
+          } else if (icon.type === 'donut') {
+            parts.push(this.donutSvg(data.weeklyPct, '#d68c45'));
+          }
+
+          // Per-metric items
+          const metrics = [
+            { k: 'weeklyPct',    fill: data.weeklyPct,         text: '%' + data.weeklyPct },
+            { k: 'weeklyTime',   fill: data.weeklyTimeFill,    text: data.weeklyTime },
+            { k: 'fiveHourPct',  fill: data.fiveHourPct,       text: '%' + data.fiveHourPct },
+            { k: 'fiveHourTime', fill: data.fiveHourTimeFill,  text: data.fiveHourTime },
+          ];
+          for (const m of metrics) {
+            const mode = d[m.k];
+            if (mode === 'text') parts.push(`<span>${m.text}</span>`);
+            else if (mode === 'donut') parts.push(this.donutSvg(m.fill, c[m.k]));
+          }
+
+          if (parts.length === 0) return '<span class="text-haze italic">— boş —</span>';
+          return parts.join(' <span class="text-haze">·</span> ');
+        }
+      });
+    });
+
+    // Top preview component (used by pinned menu bar)
+    function topPreview() {
+      return {
+        clock: '',
+        init() {
+          const tick = () => {
+            const d = new Date();
+            this.clock = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+          };
+          tick();
+          setInterval(tick, 30000);
+        },
+        get title() {
+          return Alpine.store('computed').titleResult();
+        }
+      };
+    }
+
+    // Sparkline demo
+    function sparklineDemo() {
+      return {
+        range: '7d',
+        points: [],
+        labels: [],
+        current: 32,
+        delta: 0,
+        linePath: '',
+        areaPath: '',
+        init() { this.regenerate(); },
+        regenerate() {
+          const counts = { '24h': 24, '7d': 14, '30d': 30 };
+          const labelMap = {
+            '24h': ['-24h', '-12h', 'now'],
+            '7d':  ['Mon', 'Thu', 'Sun'],
+            '30d': ['-30d', '-15d', 'now'],
+          };
+          const n = counts[this.range];
+          this.labels = labelMap[this.range];
+          // Random walk from ~10 ending around 30-50
+          const pts = [];
+          let v = 8 + Math.random() * 10;
+          const target = 28 + Math.random() * 20;
+          for (let i = 0; i < n; i++) {
+            const progress = i / (n - 1);
+            const drift = (target - v) * 0.06;
+            const noise = (Math.random() - 0.5) * 7;
+            v = Math.max(0, Math.min(100, v + drift + noise));
+            pts.push(v);
+          }
+          // Build path
+          const w = 320, h = 80, pad = 4;
+          const xStep = (w - pad * 2) / (n - 1);
+          this.points = pts.map((p, i) => ({
+            x: pad + i * xStep,
+            y: pad + (h - pad * 2) * (1 - p / 100),
+          }));
+          this.linePath = this.points.map((p, i) => (i === 0 ? `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}` : `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)).join(' ');
+          this.areaPath = this.linePath + ` L ${this.points[this.points.length-1].x.toFixed(1)} ${h - pad} L ${pad} ${h - pad} Z`;
+          this.current = Math.round(pts[pts.length - 1]);
+          this.delta = Math.round(pts[pts.length - 1] - pts[0]);
+        }
+      };
+    }
+
+    // Hotkey capture demo
+    function hotkeyDemo() {
+      return {
+        capturing: false,
+        pressed: [],
+        capture(e) {
+          if (!this.capturing) return;
+          const parts = [];
+          if (e.ctrlKey) parts.push('⌃');
+          if (e.altKey) parts.push('⌥');
+          if (e.shiftKey) parts.push('⇧');
+          if (e.metaKey) parts.push('⌘');
+          // Only accept modifier+letter combos
+          const k = e.key;
+          if (k.length === 1 && /[A-Za-z0-9]/.test(k)) parts.push(k.toUpperCase());
+          else if (k === 'Escape') { this.capturing = false; return; }
+          else return; // wait for letter
+          this.pressed = parts;
+          this.capturing = false;
+        }
+      };
+    }
+  </script>
+</body>
+</html>

@@ -20,21 +20,88 @@
 "time.minutes" = "%ddk";
 "time.reset" = "sıfırlandı";
 
-/* Örn: "3g 18s kaldı" */
+/* Kalan süre */
 "remaining.suffix" = "%@ kaldı";
 "footer.updated" = "Güncelleme: %@";
 
-/* Menü */
+/* Sabit menü öğeleri */
 "menu.show_remaining_in_title" = "Kalan süreyi yanında göster";
 "menu.refresh" = "Şimdi yenile";
 "menu.open_usage" = "claude.ai/settings/usage'ı aç";
 "menu.quit" = "Çıkış";
 
+/* Ayarlar alt menüsü */
+"menu.settings" = "Ayarlar…";
+"menu.title_content" = "Başlık içeriği";
+"menu.icon" = "Simge";
+"menu.refresh_interval" = "Yenileme aralığı";
+"menu.notifications" = "Bildirimler";
+"menu.hotkey" = "Klavye kısayolu";
+"menu.browsers" = "Tarayıcılar";
+"menu.version_check" = "Güncellemeleri kontrol et";
+"menu.version_new" = "Yeni: v%@ →";
+
+/* §01 Modlar */
+"mode.hidden" = "Gizle";
+"mode.text" = "Yazı";
+"mode.donut" = "Donut";
+"mode.color" = "Renk";
+
+/* Renkler */
+"color.amber" = "Amber";
+"color.green" = "Yeşil";
+"color.yellow" = "Sarı";
+"color.red" = "Kırmızı";
+"color.purple" = "Mor";
+"color.teal" = "Turkuaz";
+"color.white" = "Beyaz";
+"color.gray" = "Gri";
+
+/* §02 Simge */
+"icon.custom" = "Özel emoji…";
+"icon.custom_prompt" = "Simgeni yaz (tek karakter)";
+"icon.donut" = "Donut halka";
+"icon.none" = "Simge yok";
+
+/* §06 Yenileme */
+"refresh.30s" = "30 saniye";
+"refresh.1m" = "1 dakika";
+"refresh.5m" = "5 dakika";
+"refresh.10m" = "10 dakika";
+
+/* §05 Bildirimler */
+"notifications.enable" = "Eşik bildirimlerini etkinleştir";
+"notifications.warn" = "Uyarı";
+"notifications.alert" = "Alarm";
+"notifications.critical" = "Kritik";
+"notification.warn" = "Haftalık kullanım %%%d'e ulaştı — yavaşla.";
+"notification.alert" = "Haftalık kullanım %%%d — yaklaşık 3 gün kaldı.";
+"notification.critical" = "Haftalık kullanım kritik %%%d — yoğun oturumları ertele.";
+
+/* §07 Kısayol */
+"hotkey.enable" = "Genel kısayolu etkinleştir";
+"hotkey.current" = "Mevcut: %@";
+"hotkey.hint" = "Varsayılan: ⌥⌘U";
+
+/* §08 Tarayıcılar */
+"browser.chrome" = "Google Chrome";
+"browser.brave" = "Brave Browser";
+"browser.edge" = "Microsoft Edge";
+"browser.arc" = "Arc";
+
+/* Düğmeler */
+"button.ok" = "Tamam";
+"button.cancel" = "İptal";
+
+/* §10 Kredi */
+"credit.author" = "Nurullah Okatan";
+"credit.handle" = "@nurullah";
+
 /* Hatalar */
-"error.cookie_db" = "Chrome cookie veritabanı okunamadı";
-"error.no_session" = "claude.ai oturumu yok — Chrome'da giriş yap";
+"error.cookie_db" = "Tarayıcı cookie veritabanı okunamadı";
+"error.no_session" = "claude.ai oturumu yok — tarayıcında giriş yap";
 "error.keychain_denied" = "Keychain erişimi reddedildi";
-"error.keychain_read" = "Chrome Safe Storage okunamadı (durum %d)";
+"error.keychain_read" = "Tarayıcı Safe Storage okunamadı (durum %d)";
 "error.unknown_cookie_version" = "Bilinmeyen cookie sürümü: %@";
 "error.cookie_decrypt" = "Cookie çözme başarısız";
 "error.cookie_empty" = "Çözülen cookie boş";

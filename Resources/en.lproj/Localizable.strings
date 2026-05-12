@@ -20,21 +20,88 @@
 "time.minutes" = "%dm";
 "time.reset" = "reset";
 
-/* "%@ left" e.g. "3d 18h left" */
+/* Remaining */
 "remaining.suffix" = "%@ left";
 "footer.updated" = "Updated: %@";
 
-/* Menu items */
+/* Static menu items */
 "menu.show_remaining_in_title" = "Show remaining time in title";
 "menu.refresh" = "Refresh now";
 "menu.open_usage" = "Open claude.ai/settings/usage";
 "menu.quit" = "Quit";
 
+/* Settings submenu */
+"menu.settings" = "Settings…";
+"menu.title_content" = "Title content";
+"menu.icon" = "Icon";
+"menu.refresh_interval" = "Refresh interval";
+"menu.notifications" = "Notifications";
+"menu.hotkey" = "Hotkey";
+"menu.browsers" = "Browsers";
+"menu.version_check" = "Check for updates";
+"menu.version_new" = "New: v%@ →";
+
+/* §01 Modes */
+"mode.hidden" = "Hide";
+"mode.text" = "Text";
+"mode.donut" = "Donut";
+"mode.color" = "Color";
+
+/* Colors */
+"color.amber" = "Amber";
+"color.green" = "Green";
+"color.yellow" = "Yellow";
+"color.red" = "Red";
+"color.purple" = "Purple";
+"color.teal" = "Teal";
+"color.white" = "White";
+"color.gray" = "Gray";
+
+/* §02 Icon */
+"icon.custom" = "Custom emoji…";
+"icon.custom_prompt" = "Type your icon (one character)";
+"icon.donut" = "Donut ring";
+"icon.none" = "No icon";
+
+/* §06 Refresh */
+"refresh.30s" = "30 seconds";
+"refresh.1m" = "1 minute";
+"refresh.5m" = "5 minutes";
+"refresh.10m" = "10 minutes";
+
+/* §05 Notifications */
+"notifications.enable" = "Enable threshold alerts";
+"notifications.warn" = "Warning";
+"notifications.alert" = "Alert";
+"notifications.critical" = "Critical";
+"notification.warn" = "Weekly usage hit %d%% — pace yourself.";
+"notification.alert" = "Weekly usage at %d%% — about 3 days left.";
+"notification.critical" = "Weekly usage critical at %d%% — consider pausing heavy sessions.";
+
+/* §07 Hotkey */
+"hotkey.enable" = "Enable global hotkey";
+"hotkey.current" = "Current: %@";
+"hotkey.hint" = "Default: ⌥⌘U";
+
+/* §08 Browsers */
+"browser.chrome" = "Google Chrome";
+"browser.brave" = "Brave Browser";
+"browser.edge" = "Microsoft Edge";
+"browser.arc" = "Arc";
+
+/* Buttons */
+"button.ok" = "OK";
+"button.cancel" = "Cancel";
+
+/* §10 Credit */
+"credit.author" = "Nurullah Okatan";
+"credit.handle" = "@nurullah";
+
 /* Errors */
-"error.cookie_db" = "Cannot read Chrome cookie database";
-"error.no_session" = "No claude.ai session — please log in via Chrome";
+"error.cookie_db" = "Cannot read browser cookie database";
+"error.no_session" = "No claude.ai session — please log in via your browser";
 "error.keychain_denied" = "Keychain access denied";
-"error.keychain_read" = "Cannot read 'Chrome Safe Storage' (status %d)";
+"error.keychain_read" = "Cannot read browser Safe Storage (status %d)";
 "error.unknown_cookie_version" = "Unknown cookie version: %@";
 "error.cookie_decrypt" = "Cookie decryption failed";
 "error.cookie_empty" = "Cookie decrypted as empty";

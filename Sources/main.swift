@@ -1,7 +1,5 @@
 import Cocoa
-import SQLite3
-import Security
-import CommonCrypto
+import Carbon.HIToolbox
 
 // MARK: - Localization helpers
 
@@ -16,11 +14,9 @@ func L(_ key: String, _ args: CVarArg...) -> String {
     return withVaList(args) { NSString(format: fmt, arguments: $0) as String }
 }
 
-// MARK: - Config
+// MARK: - App-wide constants
 
 struct AppConfig {
-    static let pollIntervalSec: TimeInterval = 60
-    static let chromeCookiesPath = NSString("~/Library/Application Support/Google/Chrome/Default/Cookies").expandingTildeInPath
     static let cachePath = NSString("~/.claude-usage-widget-cache.json").expandingTildeInPath
 }
 
@@ -34,146 +30,10 @@ enum WidgetError: Error, LocalizedError {
     }
 }
 
-// MARK: - Chrome Cookie Decryption
-
-struct ChromeCookieReader {
-    /// Returns the decrypted sessionKey cookie for .claude.ai
-    static func sessionKey() throws -> String {
-        let tmp = NSTemporaryDirectory() + "claude_widget_cookies_\(UUID().uuidString).db"
-        try? FileManager.default.removeItem(atPath: tmp)
-        do {
-            try FileManager.default.copyItem(atPath: AppConfig.chromeCookiesPath, toPath: tmp)
-        } catch {
-            throw WidgetError.message(L("error.cookie_db"))
-        }
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        var db: OpaquePointer?
-        guard sqlite3_open(tmp, &db) == SQLITE_OK else {
-            throw WidgetError.message(L("error.cookie_db"))
-        }
-        defer { sqlite3_close(db) }
-
-        let sql = "SELECT encrypted_value FROM cookies WHERE host_key LIKE '%claude.ai%' AND name='sessionKey' ORDER BY length(encrypted_value) DESC LIMIT 1"
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            throw WidgetError.message(L("error.cookie_db"))
-        }
-        defer { sqlite3_finalize(stmt) }
-
-        guard sqlite3_step(stmt) == SQLITE_ROW else {
-            throw WidgetError.message(L("error.no_session"))
-        }
-        guard let blobPtr = sqlite3_column_blob(stmt, 0) else {
-            throw WidgetError.message(L("error.no_session"))
-        }
-        let blobLen = Int(sqlite3_column_bytes(stmt, 0))
-        let encrypted = Data(bytes: blobPtr, count: blobLen)
-
-        let password = try keychainPassword(service: "Chrome Safe Storage", account: "Chrome")
-        let key = try pbkdf2(password: password, salt: "saltysalt", rounds: 1003, keyLen: 16)
-
-        guard encrypted.count > 3 else { throw WidgetError.message(L("error.cookie_decrypt")) }
-        let prefix = String(data: encrypted.prefix(3), encoding: .utf8) ?? ""
-        guard prefix == "v10" || prefix == "v11" else {
-            throw WidgetError.message(L("error.unknown_cookie_version", prefix as NSString))
-        }
-        let ct = encrypted.suffix(from: 3)
-        let iv = Data(repeating: 0x20, count: 16)
-        let plain = try aesCBCDecrypt(Data(ct), key: key, iv: iv)
-
-        // Newer Chrome versions prepend a 32-byte SHA-256 hash to the plaintext.
-        // Skip those leading bytes if they aren't printable ASCII, and trim any
-        // trailing non-printable bytes (PKCS7 padding remnants).
-        let bytes = [UInt8](plain)
-        var start = 0
-        if bytes.count > 32 {
-            let head = bytes[0..<32]
-            if head.contains(where: { $0 < 0x20 || $0 >= 0x7F }) { start = 32 }
-        }
-        var end = bytes.count
-        while end > start && (bytes[end-1] < 0x20 || bytes[end-1] >= 0x7F) { end -= 1 }
-        guard end > start else { throw WidgetError.message(L("error.cookie_empty")) }
-
-        let printable = bytes[start..<end].filter { $0 >= 0x20 && $0 < 0x7F }
-        let result = String(bytes: printable, encoding: .ascii) ?? ""
-        guard !result.isEmpty else { throw WidgetError.message(L("error.cookie_empty")) }
-        return result
-    }
-
-    static func keychainPassword(service: String, account: String) throws -> String {
-        let q: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: AnyObject?
-        let status = SecItemCopyMatching(q as CFDictionary, &item)
-        if status == errSecUserCanceled || status == errSecAuthFailed {
-            throw WidgetError.message(L("error.keychain_denied"))
-        }
-        guard status == errSecSuccess, let data = item as? Data, let s = String(data: data, encoding: .utf8) else {
-            throw WidgetError.message(L("error.keychain_read", Int(status)))
-        }
-        return s
-    }
-
-    static func pbkdf2(password: String, salt: String, rounds: Int, keyLen: Int) throws -> Data {
-        let passData = password.data(using: .utf8)!
-        let saltData = salt.data(using: .utf8)!
-        var derived = Data(count: keyLen)
-        let status = derived.withUnsafeMutableBytes { (db: UnsafeMutableRawBufferPointer) -> Int32 in
-            passData.withUnsafeBytes { (pb: UnsafeRawBufferPointer) -> Int32 in
-                saltData.withUnsafeBytes { (sb: UnsafeRawBufferPointer) -> Int32 in
-                    CCKeyDerivationPBKDF(
-                        CCPBKDFAlgorithm(kCCPBKDF2),
-                        pb.bindMemory(to: Int8.self).baseAddress, passData.count,
-                        sb.bindMemory(to: UInt8.self).baseAddress, saltData.count,
-                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA1),
-                        UInt32(rounds),
-                        db.bindMemory(to: UInt8.self).baseAddress, keyLen
-                    )
-                }
-            }
-        }
-        guard status == kCCSuccess else { throw WidgetError.message(L("error.cookie_decrypt")) }
-        return derived
-    }
-
-    static func aesCBCDecrypt(_ data: Data, key: Data, iv: Data) throws -> Data {
-        let outCapacity = data.count + kCCBlockSizeAES128
-        var out = Data(count: outCapacity)
-        var outLen = 0
-        let status = out.withUnsafeMutableBytes { (ob: UnsafeMutableRawBufferPointer) -> Int32 in
-            data.withUnsafeBytes { (ib: UnsafeRawBufferPointer) -> Int32 in
-                key.withUnsafeBytes { (kb: UnsafeRawBufferPointer) -> Int32 in
-                    iv.withUnsafeBytes { (vb: UnsafeRawBufferPointer) -> Int32 in
-                        CCCrypt(
-                            CCOperation(kCCDecrypt),
-                            CCAlgorithm(kCCAlgorithmAES),
-                            CCOptions(kCCOptionPKCS7Padding),
-                            kb.baseAddress, key.count,
-                            vb.baseAddress,
-                            ib.baseAddress, data.count,
-                            ob.baseAddress, outCapacity,
-                            &outLen
-                        )
-                    }
-                }
-            }
-        }
-        guard status == kCCSuccess else { throw WidgetError.message(L("error.cookie_decrypt")) }
-        out.count = outLen
-        return out
-    }
-}
-
-// MARK: - API
+// MARK: - API model
 
 struct UsageSnapshot {
-    let weeklyUtilization: Double      // 0..100
+    let weeklyUtilization: Double
     let weeklyResetsAt: Date
     let fiveHourUtilization: Double?
     let fiveHourResetsAt: Date?
@@ -183,12 +43,7 @@ struct UsageSnapshot {
     let fetchedAt: Date
 }
 
-/// Maps Anthropic's internal plan tier IDs to friendly labels.
-/// Examples:
-///   "default_claude_max_20x" → "Max 20x"
-///   "default_claude_max_5x"  → "Max 5x"
-///   "default_claude_pro"     → "Pro"
-///   "default_free"           → "Free"
+/// "default_claude_max_20x" → "Max 20x"
 func prettyPlanName(_ tier: String) -> String {
     var s = tier.lowercased()
     s = s.replacingOccurrences(of: "default_claude_", with: "")
@@ -197,20 +52,21 @@ func prettyPlanName(_ tier: String) -> String {
     let pretty = parts.map { p -> String in
         switch p {
         case "max", "pro", "team", "free", "enterprise": return p.capitalized
-        default: return p  // keep e.g. "20x", "5x" as-is
+        default: return p
         }
     }
     return pretty.joined(separator: " ")
 }
 
+// MARK: - Claude API
+
 struct ClaudeAPI {
     static func fetchSnapshot() throws -> UsageSnapshot {
-        let cookie = try ChromeCookieReader.sessionKey()
-        let orgId = try findOrgId(cookie: cookie)
+        let cookie = try BrowserCookieReader.sessionKey(prefs: PrefsStore.shared.prefs)
+        let orgId  = try findOrgId(cookie: cookie)
 
-        // Account & plan are non-fatal: snapshot still works if either fails.
         let displayName: String? = try? fetchDisplayName(cookie: cookie)
-        let planLabel: String? = try? fetchPlanLabel(cookie: cookie, orgId: orgId)
+        let planLabel:   String? = try? fetchPlanLabel(cookie: cookie, orgId: orgId)
 
         let json = try getJSON("/api/organizations/\(orgId)/usage", cookie: cookie)
 
@@ -238,14 +94,14 @@ struct ClaudeAPI {
         }
 
         return UsageSnapshot(
-            weeklyUtilization: weeklyUtil,
-            weeklyResetsAt: weeklyResets,
+            weeklyUtilization:   weeklyUtil,
+            weeklyResetsAt:      weeklyResets,
             fiveHourUtilization: fiveUtil,
-            fiveHourResetsAt: fiveResets,
-            sonnetUtilization: sonnetUtil,
-            displayName: displayName,
-            planLabel: planLabel,
-            fetchedAt: Date()
+            fiveHourResetsAt:    fiveResets,
+            sonnetUtilization:   sonnetUtil,
+            displayName:         displayName,
+            planLabel:           planLabel,
+            fetchedAt:           Date()
         )
     }
 
@@ -253,7 +109,7 @@ struct ClaudeAPI {
         let json = try getJSON("/api/account", cookie: cookie)
         guard let dict = json as? [String: Any] else { throw WidgetError.message(L("error.api_parse")) }
         if let n = dict["display_name"] as? String, !n.isEmpty { return n }
-        if let n = dict["full_name"] as? String, !n.isEmpty { return n }
+        if let n = dict["full_name"]    as? String, !n.isEmpty { return n }
         if let e = dict["email_address"] as? String, !e.isEmpty { return e }
         throw WidgetError.message(L("error.api_parse"))
     }
@@ -284,20 +140,18 @@ struct ClaudeAPI {
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
         req.setValue("sessionKey=\(cookie)", forHTTPHeaderField: "Cookie")
-        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("application/json",     forHTTPHeaderField: "Accept")
         req.setValue("Mozilla/5.0 ClaudeUsageWidget", forHTTPHeaderField: "User-Agent")
 
         let sem = DispatchSemaphore(value: 0)
         var resultData: Data?
-        var resultStatus: Int = 0
+        var resultStatus = 0
         var resultErr: Error?
-        let task = URLSession.shared.dataTask(with: req) { data, resp, err in
-            resultData = data
-            resultErr = err
+        URLSession.shared.dataTask(with: req) { data, resp, err in
+            resultData = data; resultErr = err
             if let http = resp as? HTTPURLResponse { resultStatus = http.statusCode }
             sem.signal()
-        }
-        task.resume()
+        }.resume()
         _ = sem.wait(timeout: .now() + 20)
         if let err = resultErr { throw err }
         guard let d = resultData else { throw WidgetError.message(L("error.empty_response")) }
@@ -317,7 +171,7 @@ struct ClaudeAPI {
     }
 }
 
-// MARK: - Formatting
+// MARK: - Formatting helpers (used by both TitleRenderer and popup views)
 
 func formatRemaining(_ until: Date) -> String {
     let now = Date()
@@ -335,14 +189,7 @@ func remainingWithSuffix(_ until: Date) -> String {
     return L("remaining.suffix", formatRemaining(until) as NSString)
 }
 
-func formatPercent(_ pct: Int, withTime time: String?) -> String {
-    if let t = time {
-        return L("title.percent_with_time", pct, t as NSString)
-    }
-    return L("title.percent", pct)
-}
-
-// MARK: - Custom Views
+// MARK: - Custom popup views
 
 enum Layout {
     static let hPad: CGFloat = 18
@@ -406,8 +253,6 @@ final class UsageRowView: NSView {
         if let p = percent {
             bar.progress = p / 100.0
             bar.fillColor = colorFor(percent: p)
-            // Use the localized "percent only" title format to get the value text,
-            // then strip the emoji prefix.
             let raw = L("title.percent", Int(p.rounded()))
             valueField.stringValue = raw.replacingOccurrences(of: "🤖 ", with: "")
             valueField.textColor = colorFor(percent: p)
@@ -538,12 +383,16 @@ final class FooterView: NSView {
 
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+    // Core
     var statusItem: NSStatusItem!
-    var timer: Timer?
+    var pollTimer: Timer?
+    var titleTickTimer: Timer?
     var lastSnapshot: UsageSnapshot?
     var lastError: String?
     var lastUpdate: Date = Date(timeIntervalSince1970: 0)
 
+    // Popup views
     var accountHeader: AccountHeaderView!
     var accountSeparator: NSMenuItem?
     var weeklyHeader: SectionHeaderView!
@@ -554,10 +403,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var footer: FooterView!
     let menuWidth: CGFloat = 300
 
-    var showRemainingInTitle: Bool {
-        get { UserDefaults.standard.bool(forKey: "showRemainingInTitle") }
-        set { UserDefaults.standard.set(newValue, forKey: "showRemainingInTitle") }
-    }
+    // Menu items that need live updating
+    var versionUpdateItem: NSMenuItem?
+    var versionUpdateSeparator: NSMenuItem?
 
     static func main() {
         let app = NSApplication.shared
@@ -574,17 +422,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMenu()
         loadCache()
         refresh()
+        startPollTimer()
 
-        timer = Timer.scheduledTimer(withTimeInterval: AppConfig.pollIntervalSec, repeats: true) { [weak self] _ in
-            self?.refresh()
-        }
-        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        // Tick title every 30s so countdowns stay fresh between full refreshes.
+        titleTickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.updateTitle()
             self?.updateMenuLabels()
         }
+
+        // React to preference changes from any settings menu.
+        NotificationCenter.default.addObserver(forName: .preferencesChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.handlePrefsChanged()
+        }
+
+        // Wire global hotkey.
+        applyHotkey()
+
+        // Version check on launch (fires only if due).
+        VersionChecker.shared.checkIfDue()
     }
 
-    // MARK: Persistence
+    // MARK: - Timers
+
+    func startPollTimer() {
+        pollTimer?.invalidate()
+        let interval = TimeInterval(max(15, PrefsStore.shared.prefs.pollIntervalSec))
+        pollTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.refresh()
+        }
+    }
+
+    func handlePrefsChanged() {
+        startPollTimer()
+        applyHotkey()
+        updateTitle()
+        updateMenuLabels()
+        // Rebuild only the dynamic submenus that show state (e.g. checkmarks).
+        rebuildSettingsMenus()
+        // Reflect any new latestKnownVersion.
+        refreshVersionBadge()
+    }
+
+    // MARK: - Hotkey
+
+    func applyHotkey() {
+        HotKeyManager.shared.apply(prefs: PrefsStore.shared.prefs) { [weak self] in
+            self?.statusItem.button?.performClick(nil)
+        }
+    }
+
+    // MARK: - Persistence
 
     func loadCache() {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: AppConfig.cachePath)),
@@ -593,14 +480,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               let wr = dict["weeklyResetsAt"] as? String,
               let wrDate = ClaudeAPI.parseISO(wr) else { return }
         lastSnapshot = UsageSnapshot(
-            weeklyUtilization: wu,
-            weeklyResetsAt: wrDate,
+            weeklyUtilization:   wu,
+            weeklyResetsAt:      wrDate,
             fiveHourUtilization: dict["fiveHourUtilization"] as? Double,
-            fiveHourResetsAt: (dict["fiveHourResetsAt"] as? String).flatMap(ClaudeAPI.parseISO),
-            sonnetUtilization: dict["sonnetUtilization"] as? Double,
-            displayName: dict["displayName"] as? String,
-            planLabel: dict["planLabel"] as? String,
-            fetchedAt: (dict["fetchedAt"] as? String).flatMap(ClaudeAPI.parseISO) ?? Date()
+            fiveHourResetsAt:    (dict["fiveHourResetsAt"] as? String).flatMap(ClaudeAPI.parseISO),
+            sonnetUtilization:   dict["sonnetUtilization"] as? Double,
+            displayName:         dict["displayName"] as? String,
+            planLabel:           dict["planLabel"] as? String,
+            fetchedAt:           (dict["fetchedAt"] as? String).flatMap(ClaudeAPI.parseISO) ?? Date()
         )
         updateTitle()
         updateMenuLabels()
@@ -611,20 +498,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         var dict: [String: Any] = [
             "weeklyUtilization": s.weeklyUtilization,
-            "weeklyResetsAt": iso.string(from: s.weeklyResetsAt),
-            "fetchedAt": iso.string(from: s.fetchedAt),
+            "weeklyResetsAt":    iso.string(from: s.weeklyResetsAt),
+            "fetchedAt":         iso.string(from: s.fetchedAt),
         ]
         if let v = s.fiveHourUtilization { dict["fiveHourUtilization"] = v }
-        if let d = s.fiveHourResetsAt { dict["fiveHourResetsAt"] = iso.string(from: d) }
-        if let v = s.sonnetUtilization { dict["sonnetUtilization"] = v }
-        if let n = s.displayName { dict["displayName"] = n }
-        if let p = s.planLabel { dict["planLabel"] = p }
+        if let d = s.fiveHourResetsAt    { dict["fiveHourResetsAt"]    = iso.string(from: d) }
+        if let v = s.sonnetUtilization   { dict["sonnetUtilization"]   = v }
+        if let n = s.displayName         { dict["displayName"]         = n }
+        if let p = s.planLabel           { dict["planLabel"]           = p }
         if let data = try? JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted) {
             try? data.write(to: URL(fileURLWithPath: AppConfig.cachePath))
         }
     }
 
-    // MARK: Menu
+    // MARK: - Refresh
+
+    func refresh() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            do {
+                let snap = try ClaudeAPI.fetchSnapshot()
+                DispatchQueue.main.async {
+                    self.lastSnapshot = snap
+                    self.lastError    = nil
+                    self.lastUpdate   = Date()
+                    self.saveCache(snap)
+                    self.updateTitle()
+                    self.updateMenuLabels()
+                    NotificationManager.shared.evaluate(snapshot: snap)
+                    VersionChecker.shared.checkIfDue()
+                    self.refreshVersionBadge()
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.lastError = error.localizedDescription
+                    self.updateMenuLabels()
+                    if self.lastSnapshot == nil, let button = self.statusItem.button {
+                        button.attributedTitle = NSAttributedString(
+                            string: L("title.error"),
+                            attributes: [.foregroundColor: NSColor.systemRed]
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Title
+
+    func updateTitle() {
+        guard let button = statusItem.button else { return }
+        let attr = TitleRenderer.compose(
+            snapshot: lastSnapshot,
+            prefs: PrefsStore.shared.prefs,
+            error: (lastSnapshot == nil && lastError != nil)
+        )
+        button.attributedTitle = attr
+        if let s = lastSnapshot {
+            let pct = Int(s.weeklyUtilization.rounded())
+            button.toolTip = L("tooltip", pct, formatRemaining(s.weeklyResetsAt) as NSString)
+        }
+    }
+
+    // MARK: - Menu (popup)
 
     func buildMenu() {
         let menu = NSMenu()
@@ -665,24 +601,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(footerItem)
 
         menu.addItem(NSMenuItem.separator())
-        let toggle = NSMenuItem(title: L("menu.show_remaining_in_title"), action: #selector(menuToggleRemaining), keyEquivalent: "")
-        toggle.tag = 104
-        toggle.state = showRemainingInTitle ? .on : .off
-        menu.addItem(toggle)
+
+        // Settings submenu hub
+        let settingsItem = NSMenuItem(title: L("menu.settings"), action: nil, keyEquivalent: ",")
+        settingsItem.submenu = buildSettingsMenu()
+        menu.addItem(settingsItem)
 
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: L("menu.refresh"), action: #selector(menuRefresh), keyEquivalent: "r"))
+        menu.addItem(NSMenuItem(title: L("menu.refresh"),    action: #selector(menuRefresh),   keyEquivalent: "r"))
         menu.addItem(NSMenuItem(title: L("menu.open_usage"), action: #selector(menuOpenUsage), keyEquivalent: "u"))
+
+        // Version-update item (hidden by default)
+        let upd = NSMenuItem.separator(); upd.isHidden = true
+        versionUpdateSeparator = upd
+        menu.addItem(upd)
+        let updItem = NSMenuItem(title: L("menu.version_new", "1.0.0"),
+                                 action: #selector(menuOpenReleases), keyEquivalent: "")
+        updItem.isHidden = true
+        versionUpdateItem = updItem
+        menu.addItem(updItem)
+
+        // Quit
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: L("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: L("menu.quit"),
+                                action: #selector(NSApplication.terminate(_:)),
+                                keyEquivalent: "q"))
+
+        // Credit footer (§10)
+        menu.addItem(NSMenuItem.separator())
+        let creditAuthor = NSMenuItem(title: L("credit.author") + " ↗",
+                                      action: #selector(menuOpenAuthorSite), keyEquivalent: "")
+        creditAuthor.attributedTitle = creditAttributed(L("credit.author") + " ↗")
+        menu.addItem(creditAuthor)
+
+        let creditX = NSMenuItem(title: L("credit.handle") + " ↗",
+                                 action: #selector(menuOpenAuthorX), keyEquivalent: "")
+        creditX.attributedTitle = creditAttributed(L("credit.handle") + " ↗")
+        menu.addItem(creditX)
 
         statusItem.menu = menu
+    }
+
+    private func creditAttributed(_ s: String) -> NSAttributedString {
+        return NSAttributedString(string: s, attributes: [
+            .foregroundColor: NSColor.tertiaryLabelColor,
+            .font: NSFont.systemFont(ofSize: 11),
+        ])
     }
 
     func updateMenuLabels() {
         guard weeklyHeader != nil else { return }
 
-        // Account header
         if let s = lastSnapshot, (s.displayName != nil || s.planLabel != nil) {
             accountHeader.update(name: s.displayName, plan: s.planLabel)
             accountHeader.isHidden = false
@@ -709,7 +678,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 fiveHourHeader.isHidden = false
             } else {
                 fiveHourHeader.isHidden = true
-                fiveHourRow.isHidden = true
+                fiveHourRow.isHidden    = true
             }
         } else {
             weeklyHeader.update(L("section.weekly"), trailing: "—")
@@ -731,62 +700,394 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: Title
-
-    func updateTitle() {
-        guard let button = statusItem.button else { return }
-        guard let s = lastSnapshot else {
-            button.title = L("title.loading")
-            return
+    func refreshVersionBadge() {
+        guard let item = versionUpdateItem, let sep = versionUpdateSeparator else { return }
+        if VersionChecker.shared.updateAvailable {
+            let v = PrefsStore.shared.prefs.latestKnownVersion
+            item.title = L("menu.version_new", v as NSString)
+            item.isHidden = false
+            sep.isHidden  = false
+        } else {
+            item.isHidden = true
+            sep.isHidden  = true
         }
-        let pct = Int(s.weeklyUtilization.rounded())
-        let remaining = formatRemaining(s.weeklyResetsAt)
-        let title = formatPercent(pct, withTime: showRemainingInTitle ? remaining : nil)
-        let color: NSColor = pct >= 90 ? .systemRed : (pct >= 75 ? .systemOrange : .labelColor)
-        button.attributedTitle = NSAttributedString(string: title, attributes: [.foregroundColor: color])
-        button.toolTip = L("tooltip", pct, remaining as NSString)
     }
 
-    // MARK: Actions
+    // MARK: - Settings submenus
 
-    @objc func menuRefresh() { refresh() }
-    @objc func menuToggleRemaining() {
-        showRemainingInTitle.toggle()
-        if let item = statusItem.menu?.item(withTag: 104) {
-            item.state = showRemainingInTitle ? .on : .off
-        }
-        updateTitle()
+    func buildSettingsMenu() -> NSMenu {
+        let m = NSMenu()
+
+        // §01 Title content per-metric
+        let titleSub = NSMenuItem(title: L("menu.title_content"), action: nil, keyEquivalent: "")
+        titleSub.submenu = buildTitleContentMenu()
+        m.addItem(titleSub)
+
+        // §02 Icon picker
+        let iconSub = NSMenuItem(title: L("menu.icon"), action: nil, keyEquivalent: "")
+        iconSub.submenu = buildIconMenu()
+        m.addItem(iconSub)
+
+        m.addItem(NSMenuItem.separator())
+
+        // §06 Refresh interval
+        let refreshSub = NSMenuItem(title: L("menu.refresh_interval"), action: nil, keyEquivalent: "")
+        refreshSub.submenu = buildRefreshMenu()
+        m.addItem(refreshSub)
+
+        // §05 Notifications
+        let notifSub = NSMenuItem(title: L("menu.notifications"), action: nil, keyEquivalent: "")
+        notifSub.submenu = buildNotificationsMenu()
+        m.addItem(notifSub)
+
+        // §07 Hotkey
+        let hotSub = NSMenuItem(title: L("menu.hotkey"), action: nil, keyEquivalent: "")
+        hotSub.submenu = buildHotkeyMenu()
+        m.addItem(hotSub)
+
+        m.addItem(NSMenuItem.separator())
+
+        // §08 Browsers
+        let browserSub = NSMenuItem(title: L("menu.browsers"), action: nil, keyEquivalent: "")
+        browserSub.submenu = buildBrowserMenu()
+        m.addItem(browserSub)
+
+        // §09 Version check toggle
+        let updItem = NSMenuItem(title: L("menu.version_check"),
+                                 action: #selector(toggleVersionCheck), keyEquivalent: "")
+        updItem.state = PrefsStore.shared.prefs.versionCheckEnabled ? .on : .off
+        m.addItem(updItem)
+
+        return m
     }
+
+    func rebuildSettingsMenus() {
+        guard let main = statusItem.menu else { return }
+        for item in main.items where item.submenu != nil {
+            // The "Settings" hub item is the one whose tag we don't tag; identify by title.
+            if item.title == L("menu.settings") {
+                item.submenu = buildSettingsMenu()
+            }
+        }
+    }
+
+    // §01 — per-metric submenu
+    private func buildTitleContentMenu() -> NSMenu {
+        let m = NSMenu()
+        let prefs = PrefsStore.shared.prefs
+        let metrics: [(String, MetricMode, String, String)] = [
+            ("weeklyPctMode",    prefs.weeklyPctMode,    L("label.all_models") + " · %",  prefs.weeklyPctColor),
+            ("weeklyTimeMode",   prefs.weeklyTimeMode,   L("section.weekly") + " · " + L("label.usage").lowercased() + " ⏱", prefs.weeklyTimeColor),
+            ("fiveHourPctMode",  prefs.fiveHourPctMode,  L("section.five_hour") + " · %", prefs.fiveHourPctColor),
+            ("fiveHourTimeMode", prefs.fiveHourTimeMode, L("section.five_hour") + " ⏱",   prefs.fiveHourTimeColor),
+        ]
+        for (key, mode, displayName, color) in metrics {
+            let sub = NSMenuItem(title: displayName, action: nil, keyEquivalent: "")
+            sub.submenu = buildMetricSubmenu(key: key, current: mode, currentColor: color)
+            m.addItem(sub)
+        }
+        return m
+    }
+
+    private func buildMetricSubmenu(key: String, current: MetricMode, currentColor: String) -> NSMenu {
+        let m = NSMenu()
+        let modes: [(MetricMode, String)] = [
+            (.hidden, L("mode.hidden")),
+            (.text,   L("mode.text")),
+            (.donut,  L("mode.donut")),
+        ]
+        for (mode, label) in modes {
+            let it = NSMenuItem(title: label, action: #selector(setMetricMode(_:)), keyEquivalent: "")
+            it.representedObject = ["key": key, "mode": mode.rawValue]
+            it.state = (mode == current) ? .on : .off
+            m.addItem(it)
+        }
+        // Color submenu only when donut
+        if current == .donut {
+            m.addItem(NSMenuItem.separator())
+            let colorSub = NSMenuItem(title: L("mode.color"), action: nil, keyEquivalent: "")
+            colorSub.submenu = buildColorMenu(key: key, current: currentColor)
+            m.addItem(colorSub)
+        }
+        return m
+    }
+
+    private func buildColorMenu(key: String, current: String) -> NSMenu {
+        let m = NSMenu()
+        let palette: [(String, String)] = [
+            ("#d68c45", L("color.amber")),
+            ("#5dc97f", L("color.green")),
+            ("#d4c25a", L("color.yellow")),
+            ("#d6645a", L("color.red")),
+            ("#a87fd6", L("color.purple")),
+            ("#7fb8b8", L("color.teal")),
+            ("#f4eee3", L("color.white")),
+            ("#8a8378", L("color.gray")),
+        ]
+        for (hex, name) in palette {
+            let it = NSMenuItem(title: "● " + name, action: #selector(setMetricColor(_:)), keyEquivalent: "")
+            it.representedObject = ["key": key, "color": hex]
+            it.state = (hex == current) ? .on : .off
+            // tint the bullet
+            let attr = NSMutableAttributedString(string: "●  ", attributes: [.foregroundColor: NSColor(hex: hex)])
+            attr.append(NSAttributedString(string: name))
+            it.attributedTitle = attr
+            m.addItem(it)
+        }
+        return m
+    }
+
+    @objc func setMetricMode(_ sender: NSMenuItem) {
+        guard let info = sender.representedObject as? [String: String],
+              let key = info["key"],
+              let modeRaw = info["mode"],
+              let mode = MetricMode(rawValue: modeRaw) else { return }
+        PrefsStore.shared.update { p in
+            switch key {
+            case "weeklyPctMode":    p.weeklyPctMode    = mode
+            case "weeklyTimeMode":   p.weeklyTimeMode   = mode
+            case "fiveHourPctMode":  p.fiveHourPctMode  = mode
+            case "fiveHourTimeMode": p.fiveHourTimeMode = mode
+            default: break
+            }
+        }
+    }
+
+    @objc func setMetricColor(_ sender: NSMenuItem) {
+        guard let info = sender.representedObject as? [String: String],
+              let key = info["key"],
+              let color = info["color"] else { return }
+        PrefsStore.shared.update { p in
+            switch key {
+            case "weeklyPctMode":    p.weeklyPctColor    = color
+            case "weeklyTimeMode":   p.weeklyTimeColor   = color
+            case "fiveHourPctMode":  p.fiveHourPctColor  = color
+            case "fiveHourTimeMode": p.fiveHourTimeColor = color
+            default: break
+            }
+        }
+    }
+
+    // §02 — icon
+    private func buildIconMenu() -> NSMenu {
+        let m = NSMenu()
+        let prefs = PrefsStore.shared.prefs
+        let presets = ["🤖", "🧠", "⚡", "✨", "◉", "●", "▲", "◐"]
+        for emoji in presets {
+            let it = NSMenuItem(title: emoji, action: #selector(setIconEmoji(_:)), keyEquivalent: "")
+            it.representedObject = emoji
+            if prefs.iconType == .emoji && prefs.iconValue == emoji { it.state = .on }
+            m.addItem(it)
+        }
+        m.addItem(NSMenuItem.separator())
+        let custom = NSMenuItem(title: L("icon.custom"), action: #selector(promptCustomIcon), keyEquivalent: "")
+        if prefs.iconType == .custom { custom.state = .on }
+        m.addItem(custom)
+        let donut = NSMenuItem(title: L("icon.donut"), action: #selector(setIconDonut), keyEquivalent: "")
+        if prefs.iconType == .donut { donut.state = .on }
+        m.addItem(donut)
+        let none = NSMenuItem(title: L("icon.none"), action: #selector(setIconNone), keyEquivalent: "")
+        if prefs.iconType == .none { none.state = .on }
+        m.addItem(none)
+        return m
+    }
+
+    @objc func setIconEmoji(_ sender: NSMenuItem) {
+        guard let emoji = sender.representedObject as? String else { return }
+        PrefsStore.shared.update { $0.iconType = .emoji; $0.iconValue = emoji }
+    }
+    @objc func promptCustomIcon() {
+        let alert = NSAlert()
+        alert.messageText = L("icon.custom_prompt")
+        alert.addButton(withTitle: L("button.ok"))
+        alert.addButton(withTitle: L("button.cancel"))
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 80, height: 24))
+        input.font = NSFont.systemFont(ofSize: 20)
+        input.alignment = .center
+        input.stringValue = PrefsStore.shared.prefs.iconValue
+        alert.accessoryView = input
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            let v = input.stringValue.trimmingCharacters(in: .whitespaces)
+            if !v.isEmpty {
+                PrefsStore.shared.update { $0.iconType = .custom; $0.iconValue = v }
+            }
+        }
+    }
+    @objc func setIconDonut() {
+        PrefsStore.shared.update { $0.iconType = .donut; $0.iconValue = "" }
+    }
+    @objc func setIconNone() {
+        PrefsStore.shared.update { $0.iconType = .none; $0.iconValue = "" }
+    }
+
+    // §06 — refresh interval
+    private func buildRefreshMenu() -> NSMenu {
+        let m = NSMenu()
+        let cur = PrefsStore.shared.prefs.pollIntervalSec
+        let opts: [(Int, String)] = [
+            (30,  L("refresh.30s")),
+            (60,  L("refresh.1m")),
+            (300, L("refresh.5m")),
+            (600, L("refresh.10m")),
+        ]
+        for (sec, label) in opts {
+            let it = NSMenuItem(title: label, action: #selector(setRefreshInterval(_:)), keyEquivalent: "")
+            it.representedObject = sec
+            if sec == cur { it.state = .on }
+            m.addItem(it)
+        }
+        return m
+    }
+
+    @objc func setRefreshInterval(_ sender: NSMenuItem) {
+        guard let sec = sender.representedObject as? Int else { return }
+        PrefsStore.shared.update { $0.pollIntervalSec = sec }
+    }
+
+    // §05 — notifications
+    private func buildNotificationsMenu() -> NSMenu {
+        let m = NSMenu()
+        let p = PrefsStore.shared.prefs
+        let enable = NSMenuItem(title: L("notifications.enable"),
+                                action: #selector(toggleNotifications), keyEquivalent: "")
+        enable.state = p.notificationsEnabled ? .on : .off
+        m.addItem(enable)
+        m.addItem(NSMenuItem.separator())
+
+        // Threshold submenus
+        for (label, current, key) in [
+            (L("notifications.warn"),     p.warnThreshold,     "warn"),
+            (L("notifications.alert"),    p.alertThreshold,    "alert"),
+            (L("notifications.critical"), p.criticalThreshold, "critical"),
+        ] {
+            let sub = NSMenuItem(title: "\(label): %\(current)", action: nil, keyEquivalent: "")
+            sub.submenu = buildThresholdMenu(key: key, current: current)
+            m.addItem(sub)
+        }
+        return m
+    }
+
+    private func buildThresholdMenu(key: String, current: Int) -> NSMenu {
+        let m = NSMenu()
+        let values: [Int]
+        switch key {
+        case "warn":     values = [25, 33, 40, 50, 60, 70, 80]
+        case "alert":    values = [50, 60, 70, 75, 80, 85, 90]
+        case "critical": values = [80, 85, 90, 93, 95, 97, 99]
+        default:         values = []
+        }
+        for v in values {
+            let it = NSMenuItem(title: "%\(v)", action: #selector(setThreshold(_:)), keyEquivalent: "")
+            it.representedObject = ["key": key, "value": v]
+            if v == current { it.state = .on }
+            m.addItem(it)
+        }
+        return m
+    }
+
+    @objc func toggleNotifications() {
+        PrefsStore.shared.update { $0.notificationsEnabled.toggle() }
+        if PrefsStore.shared.prefs.notificationsEnabled {
+            NotificationManager.shared.ensureAuthorized()
+        }
+    }
+
+    @objc func setThreshold(_ sender: NSMenuItem) {
+        guard let info = sender.representedObject as? [String: Any],
+              let key = info["key"] as? String,
+              let value = info["value"] as? Int else { return }
+        PrefsStore.shared.update { p in
+            switch key {
+            case "warn":     p.warnThreshold     = value
+            case "alert":    p.alertThreshold    = value
+            case "critical": p.criticalThreshold = value
+            default: break
+            }
+        }
+    }
+
+    // §07 — hotkey
+    private func buildHotkeyMenu() -> NSMenu {
+        let m = NSMenu()
+        let p = PrefsStore.shared.prefs
+        let toggle = NSMenuItem(title: L("hotkey.enable"),
+                                action: #selector(toggleHotkey), keyEquivalent: "")
+        toggle.state = p.hotkeyEnabled ? .on : .off
+        m.addItem(toggle)
+        m.addItem(NSMenuItem.separator())
+        let label = HotKeyManager.label(keyCode: p.hotkeyKeyCode, modifiers: p.hotkeyModifiers)
+        let info = NSMenuItem(title: L("hotkey.current", label as NSString), action: nil, keyEquivalent: "")
+        info.isEnabled = false
+        m.addItem(info)
+        let hint = NSMenuItem(title: L("hotkey.hint"), action: nil, keyEquivalent: "")
+        hint.isEnabled = false
+        m.addItem(hint)
+        return m
+    }
+
+    @objc func toggleHotkey() {
+        PrefsStore.shared.update { $0.hotkeyEnabled.toggle() }
+    }
+
+    // §08 — browsers
+    private func buildBrowserMenu() -> NSMenu {
+        let m = NSMenu()
+        let p = PrefsStore.shared.prefs
+        let items: [(String, Bool, String)] = [
+            ("🟢 " + L("browser.chrome"), p.browserChromeEnabled, "chrome"),
+            ("🦁 " + L("browser.brave"),  p.browserBraveEnabled,  "brave"),
+            ("🟦 " + L("browser.edge"),   p.browserEdgeEnabled,   "edge"),
+            ("🏹 " + L("browser.arc"),    p.browserArcEnabled,    "arc"),
+        ]
+        for (label, enabled, id) in items {
+            let it = NSMenuItem(title: label, action: #selector(toggleBrowser(_:)), keyEquivalent: "")
+            it.representedObject = id
+            it.state = enabled ? .on : .off
+            m.addItem(it)
+        }
+        return m
+    }
+
+    @objc func toggleBrowser(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        PrefsStore.shared.update { p in
+            switch id {
+            case "chrome": p.browserChromeEnabled.toggle()
+            case "brave":  p.browserBraveEnabled.toggle()
+            case "edge":   p.browserEdgeEnabled.toggle()
+            case "arc":    p.browserArcEnabled.toggle()
+            default: break
+            }
+        }
+    }
+
+    // §09 — version
+    @objc func toggleVersionCheck() {
+        PrefsStore.shared.update { $0.versionCheckEnabled.toggle() }
+    }
+
+    // MARK: - Static menu actions
+
+    @objc func menuRefresh()  { refresh() }
     @objc func menuOpenUsage() {
         if let url = URL(string: "https://claude.ai/settings/usage") {
             NSWorkspace.shared.open(url)
         }
     }
-
-    // MARK: Refresh
-
-    func refresh() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self = self else { return }
-            do {
-                let snap = try ClaudeAPI.fetchSnapshot()
-                DispatchQueue.main.async {
-                    self.lastSnapshot = snap
-                    self.lastError = nil
-                    self.lastUpdate = Date()
-                    self.saveCache(snap)
-                    self.updateTitle()
-                    self.updateMenuLabels()
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.lastError = error.localizedDescription
-                    self.updateMenuLabels()
-                    if self.lastSnapshot == nil, let button = self.statusItem.button {
-                        button.attributedTitle = NSAttributedString(string: L("title.error"), attributes: [.foregroundColor: NSColor.systemRed])
-                    }
-                }
-            }
+    @objc func menuOpenReleases() {
+        if let url = URL(string: VersionChecker.releasesURL) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    @objc func menuOpenAuthorSite() {
+        if let url = URL(string: "https://www.nurullah.net") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    @objc func menuOpenAuthorX() {
+        if let url = URL(string: "https://x.com/nurullah") {
+            NSWorkspace.shared.open(url)
         }
     }
 }

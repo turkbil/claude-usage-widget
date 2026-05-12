@@ -13,7 +13,7 @@ rm -rf "$APP_DIR"
 mkdir -p "$BIN_DIR" "$RES_DIR"
 
 echo "→ Compiling Swift…"
-swiftc -O -parse-as-library -o "$BIN_DIR/$APP_NAME" Sources/main.swift -framework Cocoa
+swiftc -O -parse-as-library -o "$BIN_DIR/$APP_NAME" Sources/*.swift -framework Cocoa -framework UserNotifications -framework Carbon
 
 echo "→ Copying localization bundles…"
 for lproj in Resources/*.lproj; do
