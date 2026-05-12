@@ -2,6 +2,8 @@
 
 macOS menü çubuğunda Claude haftalık kullanım yüzdeni ve reset'e kalan süreyi gösteren native bir widget. Hava durumu simgesinin yanına oturur, tek bakışta görürsün.
 
+> Windows'ta mısın? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
+
 [**English README →**](README.md)
 
 ```

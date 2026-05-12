@@ -2,6 +2,8 @@
 
 A native macOS menu bar widget that shows your Claude weekly usage percentage and time until reset — at a glance, right next to your weather icon.
 
+> On Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
+
 [**Türkçe README →**](README.tr.md)
 
 ```
