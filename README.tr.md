@@ -38,6 +38,23 @@ macOS menü çubuğunda Claude haftalık kullanımını tek bakışta gösteren 
 
 ---
 
+## Bu widget'ı farklı kılan ne?
+
+Bir menü çubuğu uygulamasında genellikle yan yana bulunmayan birkaç özellik:
+
+- 🍩 **Menü çubuğu başlığına gömülü donut halkalar.** Her veri minik bir halka olarak çizilebilir (ayrı pencere değil, popup değil — gerçekten başlığın içinde), ve her birinin rengini bağımsız seçersin.
+- 🔮 **Burn-rate tahmini.** Dropdown sana "↗ Hafta sonu tahmini: %64" der, hafta ortasındayken. Hızın 100'ü aşıyorsa "⚠ Bu hızla yaklaşık 1g 8s sonra limit" olur.
+- 📈 **İlk gün bile anlamlı görünen sparkline.** Veri birikmesini beklemek yerine, ilk yenilemeden itibaren `haftaBaşı (%0) → bugün (gerçek) → haftaSonu (tahmin, kesik)` çizer.
+- 🤝 **Aynı binary'nin içine gömülü MCP server.** Claude Code'un kendisi `get_usage`'ı çağırıp uzun bir görev öncesi haftalık limitini görebilir. Tek JSON parçası, Claude Code'a tek restart.
+- 🌐 **Yerel HTTP + CLI modları** — Raycast, Alfred, tmux, shell script'ler için. Aynı veri, üç farklı okuma yolu.
+- 🦊 **Çoklu tarayıcı failover.** Chrome, Brave, Edge, Arc — sadece kullandıklarını aç; widget sırayla dener, geçerli claude.ai oturumu bulan ilk tarayıcı kazanır.
+- 🔔 **Edge-triggered eşik bildirimleri.** Üç ayarlanabilir seviye (uyarı / alarm / kritik) **haftada her seviye için bir kez** tetiklenir — eşik etrafında dolaşırsan spam yok. Haftalık reset sonrası otomatik hazır olur.
+- 🎚 **Gerçek bir ayarlar penceresi, iç içe submenu değil.** Tüm seçenekler tek bakışta. Özel emoji alanına tıkla, macOS Emoji Picker otomatik açılır.
+- 🔐 **İmzalı & notarize — `xattr` numarası yok.** /Applications'a sürükle, çift tıkla, bitti.
+- 🪙 **Üçüncü taraf servis yok.** Sparkle yok, Sentry yok, analytics endpoint yok, telemetri SDK'sı yok. Tek dışarı trafik claude.ai (kullanım verisi) ve api.github.com (günlük sürüm kontrolü, kapatılabilir).
+
+---
+
 ## Özellikler
 
 ### Menü çubuğu başlığı
@@ -256,6 +273,46 @@ Dil eklemek için `Resources/en.lproj/Localizable.strings`'i `Resources/<kod>.lp
 | Eski yüzde | Dropdown → **Şimdi yenile** (⌘R) |
 | Menü çubuğunda hiçbir şey yok | `/tmp/claude-usage-widget.err.log`'a bak. Uygulama çalışıyor mu (`pgrep ClaudeUsageWidget`). |
 | Çökme | macOS otomatik olarak `~/Library/Logs/DiagnosticReports/`'a crash log yazar. GitHub'da issue aç, log'u yapıştır. |
+
+---
+
+## İpuçları & püf noktaları
+
+- **Hızlı aç:** ⌥⌘U her yerden dropdown'u açar (Ayarlar'dan değiştirilebilir).
+- **Donut + yazı gizli** = en temiz menü çubuğu görünümü. Her veriyi farklı renkte "Donut" yap → menü çubuğunda 4 ufak halka, sayı kalabalığı yok.
+- **Polling'i yavaşlat:** pildeyken yenileme aralığını 10 dk yap — saatlik API çağrısı 6'ya düşer.
+- **Terminal alias'ı:** `alias claude-status='ClaudeUsageWidget --print-usage | jq .weekly_utilization_pct'` ekle.
+- **Tahmin %100'ü geçince:** dropdown kırmızı "bu hızla X süre sonra limit" mesajına döner — yavaşlama vakti.
+- **Çoklu tarayıcı:** iş için bir tarayıcı, kişisel için başka kullanıyorsan ikisini de aç — widget hangisinde claude.ai oturumu varsa ondan okur.
+
+---
+
+## Proje yapısı (katkı sağlayanlar için)
+
+```
+.
+├── Sources/                 13 Swift dosyası
+│   ├── main.swift           # AppDelegate, popup, menu, refresh döngüsü
+│   ├── Preferences.swift    # Codable ayarlar + UserDefaults store
+│   ├── SettingsWindow.swift # Tüm tercihleri içeren NSWindow
+│   ├── TitleRenderer.swift  # Menü çubuğu başlığı için NSAttributedString
+│   ├── DonutImage.swift     # Inline donut NSImage çizer
+│   ├── BrowserCookieReader.swift   # Chrome/Brave/Edge/Arc cookie decrypt
+│   ├── ClaudeApi.swift      # claude.ai API client (şu an main.swift içinde)
+│   ├── Forecast.swift       # Burn-rate projeksiyon mantığı
+│   ├── UsageHistory.swift   # Sparkline örnek buffer'ı (14 günlük cap)
+│   ├── NotificationManager.swift   # Eşik bildirimleri (UserNotifications)
+│   ├── HotKeyManager.swift  # Carbon RegisterEventHotKey wrapper'ı
+│   ├── VersionChecker.swift # Günlük GitHub Releases polling
+│   ├── LocalHTTPServer.swift       # 127.0.0.1:9123 üzerinde NWListener
+│   ├── MCPServer.swift      # JSON-RPC over stdio
+│   └── CLIRunner.swift      # --print-usage one-shot modu
+├── Resources/{en,tr,de,es,fr}.lproj/Localizable.strings
+├── .github/workflows/release.yml   # Tag push'unda imzala + notarize + yayınla
+├── build.sh                 # .app derler
+├── install/local.claude-usage-widget.plist   # LaunchAgent template
+└── docs/feature-preview.html       # Tasarım önizleme / katalog
+```
 
 ---
 

@@ -38,6 +38,23 @@ A native macOS menu bar widget that shows your Claude weekly usage at a glance �
 
 ---
 
+## What makes this widget different
+
+A handful of features you don't usually find together in a menu-bar app:
+
+- 🍩 **Inline donut rings in the menu bar title.** Each metric can render as a tiny ring (not a separate window, not a popup — actually inside the title string), and you pick the color for each one independently.
+- 🔮 **Burn-rate forecast.** The dropdown tells you "↗ Projected end-of-week: 64 %" while you're still mid-week. If your pace exceeds 100 %, it flips to "⚠ At this pace, limit in ~1 d 8 h."
+- 📈 **Sparkline that already looks meaningful on day one.** Instead of waiting for samples to accumulate, it plots `weekStart (0 %) → today (real) → weekEnd (projected, dashed)` from the very first refresh.
+- 🤝 **MCP server built into the same binary.** Claude Code itself can call `get_usage` and read your weekly limit before starting a long task. One JSON snippet, one restart of Claude Code — done.
+- 🌐 **Local HTTP & CLI modes** for Raycast, Alfred, tmux, shell scripts. Same data, three ways to read it.
+- 🦊 **Multi-browser failover.** Chrome, Brave, Edge, Arc — toggle the ones you actually use; the widget tries them in order and the first valid claude.ai session wins. No vendor lock-in.
+- 🔔 **Edge-triggered threshold notifications.** Three configurable levels (warn / alert / critical) fire **once per week per level** — no notification spam if you bounce around the threshold. Re-armed automatically after the weekly reset.
+- 🎚 **Real preferences window, not nested submenus.** Every setting is visible at once. Click the custom emoji field and the macOS Emoji Picker pops automatically.
+- 🔐 **Signed & notarized — no `xattr` workarounds.** Drag to `/Applications`, double-click, done.
+- 🪙 **No third-party services.** No Sparkle, no Sentry, no analytics endpoint, no telemetry SDK. The only outbound traffic is `claude.ai` (usage data) and `api.github.com` (daily release check, can be disabled).
+
+---
+
 ## Features
 
 ### Menu-bar title
@@ -256,6 +273,46 @@ Want to add a language? Copy `Resources/en.lproj/Localizable.strings` to `Resour
 | Stale percentage | Open the dropdown → **Refresh now** (⌘R) |
 | Nothing in the menu bar | Check `/tmp/claude-usage-widget.err.log`. Make sure the app is running (`pgrep ClaudeUsageWidget`). |
 | Crash | macOS auto-saves a crash log to `~/Library/Logs/DiagnosticReports/`. Open a GitHub issue and paste it. |
+
+---
+
+## Tips & tricks
+
+- **Quick toggle:** ⌥⌘U from anywhere opens the dropdown (configurable in Settings).
+- **Donut + hidden text** = the cleanest menu bar look. Set every metric to "Donut" with different colors; you get 4 tiny rings in your menu bar with no numeric clutter.
+- **Pause polling** by setting Refresh interval to 10 min when on battery — drops API hits to 6/h.
+- **One-shot status check:** add an alias `alias claude-status='ClaudeUsageWidget --print-usage | jq .weekly_utilization_pct'` to your shell.
+- **Forecast over the line:** when "Projected end-of-week" goes above 100 %, the dropdown switches to a red "at this pace, limit in ~X" message — your cue to slow down.
+- **Multi-browser tip:** if you use one browser for work and another for personal, enable both — the widget reads from whichever has the active claude.ai session.
+
+---
+
+## Project layout (for contributors)
+
+```
+.
+├── Sources/                 13 Swift files
+│   ├── main.swift           # AppDelegate, popup, menu, refresh loop
+│   ├── Preferences.swift    # Codable settings + UserDefaults store
+│   ├── SettingsWindow.swift # NSWindow with all preferences
+│   ├── TitleRenderer.swift  # composes NSAttributedString for the menu-bar title
+│   ├── DonutImage.swift     # inline donut NSImage renderer
+│   ├── BrowserCookieReader.swift   # Chrome/Brave/Edge/Arc cookie decryption
+│   ├── ClaudeApi.swift      # claude.ai API client (inside main.swift currently)
+│   ├── Forecast.swift       # burn-rate projection logic
+│   ├── UsageHistory.swift   # sparkline sample buffer (14-day cap)
+│   ├── NotificationManager.swift   # threshold alerts (UserNotifications)
+│   ├── HotKeyManager.swift  # Carbon RegisterEventHotKey wrapper
+│   ├── VersionChecker.swift # daily GitHub Releases poll
+│   ├── LocalHTTPServer.swift       # NWListener on 127.0.0.1:9123
+│   ├── MCPServer.swift      # JSON-RPC over stdio
+│   └── CLIRunner.swift      # --print-usage one-shot mode
+├── Resources/{en,tr,de,es,fr}.lproj/Localizable.strings
+├── .github/workflows/release.yml   # signs + notarizes + publishes on tag push
+├── build.sh                 # builds the .app
+├── install/local.claude-usage-widget.plist   # LaunchAgent template
+└── docs/feature-preview.html       # design preview / catalog
+```
 
 ---
 
