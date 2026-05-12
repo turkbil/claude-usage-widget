@@ -1,5 +1,10 @@
 # Claude Kullanım Widget'ı
 
+[![En son sürüm](https://img.shields.io/github/v/release/turkbil/claude-usage-widget?label=indir&logo=github&color=d68c45)](https://github.com/turkbil/claude-usage-widget/releases/latest)
+[![Lisans: MIT](https://img.shields.io/badge/Lisans-MIT-d68c45.svg)](LICENSE)
+[![macOS 12+](https://img.shields.io/badge/macOS-12%2B-d68c45?logo=apple)](#gereksinimler)
+[![İmzalı & notarize](https://img.shields.io/badge/imzal%C4%B1%20%26%20notarize-evet-5dc97f?logo=apple)](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
+
 macOS menü çubuğunda Claude haftalık kullanım yüzdeni ve reset'e kalan süreyi gösteren native bir widget. Hava durumu simgesinin yanına oturur, tek bakışta görürsün.
 
 > Windows'ta mısın? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)

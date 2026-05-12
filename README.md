@@ -1,5 +1,10 @@
 # Claude Usage Widget
 
+[![Latest release](https://img.shields.io/github/v/release/turkbil/claude-usage-widget?label=download&logo=github&color=d68c45)](https://github.com/turkbil/claude-usage-widget/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-d68c45.svg)](LICENSE)
+[![macOS 12+](https://img.shields.io/badge/macOS-12%2B-d68c45?logo=apple)](#requirements)
+[![Signed & notarized](https://img.shields.io/badge/signed%20%26%20notarized-yes-5dc97f?logo=apple)](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
+
 A native macOS menu bar widget that shows your Claude weekly usage percentage and time until reset — at a glance, right next to your weather icon.
 
 > On Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
