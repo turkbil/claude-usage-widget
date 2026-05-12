@@ -93,6 +93,11 @@
 "button.ok" = "Tamam";
 "button.cancel" = "İptal";
 
+/* §13 Tahmin */
+"forecast.under"    = "↗ Hafta sonu tahmini: %%%d";
+"forecast.over"     = "⚠ Bu hızla yaklaşık %@ sonra limit";
+"forecast.exceeded" = "⚠ Limit aşıldı";
+
 /* §10 Kredi */
 "credit.author" = "Nurullah Okatan";
 "credit.handle" = "@nurullah";

@@ -91,3 +91,8 @@
 "button.cancel" = "Cancel";
 "credit.author" = "Nurullah Okatan";
 "credit.handle" = "@nurullah";
+
+/* §13 Forecast (EN fallback) */
+"forecast.under"    = "↗ Projected end-of-week: %d%%";
+"forecast.over"     = "⚠ At this pace, limit in ~%@";
+"forecast.exceeded" = "⚠ Limit exceeded";

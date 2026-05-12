@@ -363,6 +363,30 @@ final class AccountHeaderView: NSView {
     }
 }
 
+final class ForecastView: NSView {
+    let field = NSTextField(labelWithString: "")
+    init(width: CGFloat) {
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 22))
+        autoresizingMask = [.width]
+        field.font = NSFont.systemFont(ofSize: 11)
+        field.textColor = .secondaryLabelColor
+        field.frame = NSRect(x: Layout.hPad, y: 4, width: width - Layout.hPad*2, height: 14)
+        field.autoresizingMask = [.width]
+        field.lineBreakMode = .byTruncatingTail
+        addSubview(field)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    func update(_ text: String?, isWarning: Bool = false) {
+        if let t = text, !t.isEmpty {
+            field.stringValue = t
+            field.textColor = isWarning ? .systemOrange : .secondaryLabelColor
+            isHidden = false
+        } else {
+            isHidden = true
+        }
+    }
+}
+
 final class FooterView: NSView {
     let field = NSTextField(labelWithString: "")
     init(width: CGFloat) {
@@ -398,6 +422,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var weeklyHeader: SectionHeaderView!
     var allModelsRow: UsageRowView!
     var sonnetRow: UsageRowView!
+    var forecastView: ForecastView!
     var fiveHourHeader: SectionHeaderView!
     var fiveHourRow: UsageRowView!
     var footer: FooterView!
@@ -584,6 +609,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sonnetItem = NSMenuItem(); sonnetItem.view = sonnetRow
         menu.addItem(sonnetItem)
 
+        forecastView = ForecastView(width: menuWidth)
+        let forecastItem = NSMenuItem(); forecastItem.view = forecastView
+        menu.addItem(forecastItem)
+
         menu.addItem(NSMenuItem.separator())
 
         fiveHourHeader = SectionHeaderView(width: menuWidth)
@@ -671,6 +700,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 sonnetRow.isHidden = true
             }
 
+            // §13 Forecast — show only when meaningful
+            if let line = Forecast.line(for: s) {
+                let isWarn: Bool = {
+                    if case .willHitLimit = (Forecast.compute(snapshot: s) ?? .underBudget(endPct: 0)) { return true }
+                    return false
+                }()
+                forecastView.update(line, isWarning: isWarn)
+            } else {
+                forecastView.update(nil)
+            }
+
             if let u = s.fiveHourUtilization, let r = s.fiveHourResetsAt {
                 fiveHourHeader.update(L("section.five_hour"), trailing: remainingWithSuffix(r))
                 fiveHourRow.update(label: L("label.usage"), percent: u)
@@ -681,6 +721,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 fiveHourRow.isHidden    = true
             }
         } else {
+            forecastView?.update(nil)
             weeklyHeader.update(L("section.weekly"), trailing: "—")
             allModelsRow.update(label: L("label.all_models"), percent: nil)
             sonnetRow.update(label: L("label.sonnet"), percent: nil)

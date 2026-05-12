@@ -93,6 +93,11 @@
 "button.ok" = "OK";
 "button.cancel" = "Cancel";
 
+/* §13 Forecast */
+"forecast.under"    = "↗ Projected end-of-week: %d%%";
+"forecast.over"     = "⚠ At this pace, limit in ~%@";
+"forecast.exceeded" = "⚠ Limit exceeded";
+
 /* §10 Credit */
 "credit.author" = "Nurullah Okatan";
 "credit.handle" = "@nurullah";
