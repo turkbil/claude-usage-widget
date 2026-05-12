@@ -61,7 +61,9 @@ jobs:
           TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
         run: |
           set -euo pipefail
-          IDENTITY="Developer ID Application: $(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)".*/\1/')"
+          # The full identity name including the "Developer ID Application: …" prefix
+          # is already inside the quotes in `find-identity` output.
+          IDENTITY="$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)".*/\1/')"
           echo "Signing identity: $IDENTITY"
 
           codesign --force --deep --options runtime --timestamp \
