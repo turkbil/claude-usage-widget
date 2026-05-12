@@ -656,16 +656,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                 action: #selector(NSApplication.terminate(_:)),
                                 keyEquivalent: "q"))
 
-        // Credit footer (§10)
+        // Credit footer (§10) — two clickable links
         menu.addItem(NSMenuItem.separator())
-        let creditAuthor = NSMenuItem(title: L("credit.author") + " ↗",
-                                      action: #selector(menuOpenAuthorSite), keyEquivalent: "")
-        creditAuthor.attributedTitle = creditAttributed(L("credit.author") + " ↗")
-        menu.addItem(creditAuthor)
+        let creditWeb = NSMenuItem(title: "nurullah.net ↗",
+                                   action: #selector(menuOpenAuthorSite), keyEquivalent: "")
+        creditWeb.attributedTitle = creditAttributed("nurullah.net ↗")
+        menu.addItem(creditWeb)
 
-        let creditX = NSMenuItem(title: L("credit.handle") + " ↗",
+        let creditX = NSMenuItem(title: "@nurullah ↗",
                                  action: #selector(menuOpenAuthorX), keyEquivalent: "")
-        creditX.attributedTitle = creditAttributed(L("credit.handle") + " ↗")
+        creditX.attributedTitle = creditAttributed("@nurullah ↗")
         menu.addItem(creditX)
 
         statusItem.menu = menu
