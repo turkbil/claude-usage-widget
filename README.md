@@ -5,11 +5,11 @@
 [![macOS 12+](https://img.shields.io/badge/macOS-12%2B-d68c45?logo=apple)](#requirements)
 [![Signed & notarized](https://img.shields.io/badge/signed%20%26%20notarized-yes-5dc97f?logo=apple)](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
 
-A native macOS menu bar widget that shows your Claude weekly usage at a glance — same data as [claude.ai/settings/usage](https://claude.ai/settings/usage), live in the menu bar, with a rich dropdown.
+**Native macOS menu-bar widget** that shows your Claude weekly usage at a glance — same data as [claude.ai/settings/usage](https://claude.ai/settings/usage), live in the menu bar, with a rich dropdown.
 
-> Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
-
-[**Türkçe README →**](README.tr.md)
+> 💻 **This is the macOS version.** On Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
+>
+> 🌐 [**Türkçe README**](README.tr.md)  ·  Free, open source (MIT), Apple-signed binary on the [Releases page](https://github.com/turkbil/claude-usage-widget/releases/latest)
 
 ```
 …  ☀︎ 22°C  🤖 32%  🔊  12:46            ← lives next to your weather icon

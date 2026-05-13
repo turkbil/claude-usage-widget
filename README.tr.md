@@ -5,11 +5,11 @@
 [![macOS 12+](https://img.shields.io/badge/macOS-12%2B-d68c45?logo=apple)](#gereksinimler)
 [![İmzalı & notarize](https://img.shields.io/badge/imzal%C4%B1%20%26%20notarize-evet-5dc97f?logo=apple)](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
 
-macOS menü çubuğunda Claude haftalık kullanımını tek bakışta gösteren native bir widget. [claude.ai/settings/usage](https://claude.ai/settings/usage) sayfasındaki verinin aynısı, canlı, üstüne zengin bir dropdown ile.
+**macOS menü çubuğu widget'ı** — Claude haftalık kullanımını tek bakışta gösteriyor. [claude.ai/settings/usage](https://claude.ai/settings/usage)'daki verinin aynısı, canlı menü çubuğunda, üstüne zengin bir dropdown.
 
-> Windows? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
-
-[**English README →**](README.md)
+> 💻 **Bu macOS sürümü.** Windows'ta mısın? → [**claude-usage-widget-windows**](https://github.com/turkbil/claude-usage-widget-windows)
+>
+> 🌐 [**English README**](README.md)  ·  Ücretsiz, açık kaynak (MIT), Apple imzalı binary [Releases sayfasında](https://github.com/turkbil/claude-usage-widget/releases/latest)
 
 ```
 …  ☀︎ 22°C  🤖 %32  🔊  12:46           ← hava durumunun yanına oturur
