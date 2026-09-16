@@ -32,6 +32,7 @@
 
 /* Errores */
 "error.cookie_db" = "No se puede leer la base de datos de cookies de Chrome";
+"error.cookie_permission" = "Se requiere Acceso total al disco: Ajustes del Sistema → Privacidad y seguridad → Acceso total al disco → añade Claude Usage";
 "error.no_session" = "Sin sesión de claude.ai — inicia sesión en Chrome";
 "error.keychain_denied" = "Acceso al llavero denegado";
 "error.keychain_read" = "No se puede leer 'Chrome Safe Storage' (estado %d)";

@@ -186,6 +186,8 @@ func formatRemaining(_ until: Date) -> String {
 }
 
 func remainingWithSuffix(_ until: Date) -> String {
+    // Past reset time: "reset" alone — no "… left" suffix.
+    if until.timeIntervalSinceNow <= 0 { return L("time.reset") }
     return L("remaining.suffix", formatRemaining(until) as NSString)
 }
 

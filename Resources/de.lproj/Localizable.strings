@@ -32,6 +32,7 @@
 
 /* Fehler */
 "error.cookie_db" = "Chrome Cookie-Datenbank nicht lesbar";
+"error.cookie_permission" = "Festplattenvollzugriff nötig: Systemeinstellungen → Datenschutz & Sicherheit → Festplattenvollzugriff → Claude Usage hinzufügen";
 "error.no_session" = "Keine claude.ai-Sitzung — bitte in Chrome anmelden";
 "error.keychain_denied" = "Schlüsselbund-Zugriff verweigert";
 "error.keychain_read" = "Chrome Safe Storage nicht lesbar (Status %d)";

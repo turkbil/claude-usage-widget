@@ -4,6 +4,24 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] — 2026-09-16
+
+### Fixed
+- **macOS 27: "Cannot read browser cookie database".** macOS 27 no longer lets apps read
+  another app's data (your browser's cookie file) without **Full Disk Access**, so the widget
+  stopped updating right after the OS update and kept showing stale numbers.
+  **What you need to do once:** System Settings → Privacy & Security → Full Disk Access →
+  **+** → choose `ClaudeUsageWidget.app` (listed as **Claude Usage**) → turn it on.
+- The widget now says exactly that ("Full Disk Access needed…") instead of the vague
+  cookie-database error, in all 5 languages.
+- The app always reported version 1.0.0, so the update checker could misreport. The version
+  now comes from the release tag.
+- A reset time that has already passed showed "reset left"; it now shows just "reset".
+
+### Changed
+- `build.sh` signs local builds with your Developer ID (when available), so the Full Disk
+  Access grant survives rebuilds (ad-hoc signatures change on every build).
+
 ## [1.4.1] — 2026-05-13
 
 ### Added

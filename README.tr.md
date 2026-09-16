@@ -95,6 +95,7 @@ Bir menü çubuğu uygulamasında genellikle yan yana bulunmayan birkaç özelli
 1. [**Releases sayfasından**](https://github.com/turkbil/claude-usage-widget/releases/latest) en son `ClaudeUsageWidget.zip`'i indir
 2. Aç → `ClaudeUsageWidget.app`'i `/Applications`'a sürükle
 3. Çift tıkla. Binary imzalı ve notarize olduğu için macOS uyarısız açar.
+3b. **macOS 27 ve sonrası:** **Sistem Ayarları → Gizlilik ve Güvenlik → Tam Disk Erişimi** → **+** → `ClaudeUsageWidget.app`'i seç (listede **Claude Usage** adıyla görünür) → anahtarı aç. Bu izin olmadan macOS tarayıcı çerezlerinin okunmasını sessizce engeller.
 4. (İsteğe bağlı) Menü çubuğu simgesi → Ayarlar → açılışta başlatmayı aç, **kısayolunu** ayarla, eşikleri yapılandır, vb.
 
 ### Açılışta otomatik başlatma
@@ -269,6 +270,7 @@ Dil eklemek için `Resources/en.lproj/Localizable.strings`'i `Resources/<kod>.lp
 |---|---|
 | `🤖 ?` + "claude.ai oturumu yok" | Tarayıcını aç, claude.ai'a giriş yap. Giriş yaptığın tarayıcının Ayarlar → Tarayıcılar'da etkin olduğundan emin ol. |
 | `🤖 ?` + "Keychain erişimi reddedildi" | İlk açılışta Keychain prompt'u çıkar — **Always Allow** de. Resetlemek için: Keychain Access → "Chrome Safe Storage" → Access Control → ClaudeUsageWidget'ı ekle. |
+| "Tam Disk Erişimi gerekli" / "Tarayıcı cookie veritabanı okunamadı" (macOS 27 güncellemesinden sonra başladıysa) | Sistem Ayarları → Gizlilik ve Güvenlik → **Tam Disk Erişimi** → **+** → `ClaudeUsageWidget.app`'i seç → anahtarı aç. Listedeki "Claude" / "claude" satırlarına **dokunma**, onlar başka uygulamalar. |
 | `HTTP 401` | claude.ai oturumun süresi dolmuş. Tarayıcında yeniden giriş yap. |
 | Eski yüzde | Dropdown → **Şimdi yenile** (⌘R) |
 | Menü çubuğunda hiçbir şey yok | `/tmp/claude-usage-widget.err.log`'a bak. Uygulama çalışıyor mu (`pgrep ClaudeUsageWidget`). |

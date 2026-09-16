@@ -118,6 +118,7 @@
 
 /* Errors */
 "error.cookie_db" = "Cannot read browser cookie database";
+"error.cookie_permission" = "Full Disk Access needed: System Settings → Privacy & Security → Full Disk Access → add Claude Usage";
 "error.no_session" = "No claude.ai session — please log in via your browser";
 "error.keychain_denied" = "Keychain access denied";
 "error.keychain_read" = "Cannot read browser Safe Storage (status %d)";

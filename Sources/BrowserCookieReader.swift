@@ -62,7 +62,15 @@ enum BrowserCookieReader {
         let tmp = NSTemporaryDirectory() + "claude_widget_\(source.id)_\(UUID().uuidString).db"
         try? FileManager.default.removeItem(atPath: tmp)
         do { try FileManager.default.copyItem(atPath: source.cookiesPath, toPath: tmp) }
-        catch { throw WidgetError.message(L("error.cookie_db")) }
+        catch {
+            FileHandle.standardError.write("[cookie] copy failed (\(source.id)): \(error)\n".data(using: .utf8)!)
+            // macOS 27+ blocks reading other apps' data unless the widget has Full Disk Access.
+            let underlying = (error as NSError).userInfo[NSUnderlyingErrorKey] as? NSError
+            if underlying?.domain == NSPOSIXErrorDomain && underlying?.code == Int(EPERM) {
+                throw WidgetError.message(L("error.cookie_permission"))
+            }
+            throw WidgetError.message(L("error.cookie_db"))
+        }
         defer { try? FileManager.default.removeItem(atPath: tmp) }
 
         var db: OpaquePointer?

@@ -32,6 +32,7 @@
 
 /* Erreurs */
 "error.cookie_db" = "Impossible de lire la base de données de cookies Chrome";
+"error.cookie_permission" = "Accès complet au disque requis : Réglages Système → Confidentialité et sécurité → Accès complet au disque → ajoutez Claude Usage";
 "error.no_session" = "Aucune session claude.ai — connectez-vous via Chrome";
 "error.keychain_denied" = "Accès au trousseau refusé";
 "error.keychain_read" = "Impossible de lire 'Chrome Safe Storage' (statut %d)";

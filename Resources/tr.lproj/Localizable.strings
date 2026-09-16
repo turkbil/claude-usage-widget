@@ -118,6 +118,7 @@
 
 /* Hatalar */
 "error.cookie_db" = "Tarayıcı cookie veritabanı okunamadı";
+"error.cookie_permission" = "Tam Disk Erişimi gerekli: Sistem Ayarları → Gizlilik ve Güvenlik → Tam Disk Erişimi → Claude Usage ekleyin";
 "error.no_session" = "claude.ai oturumu yok — tarayıcında giriş yap";
 "error.keychain_denied" = "Keychain erişimi reddedildi";
 "error.keychain_read" = "Tarayıcı Safe Storage okunamadı (durum %d)";

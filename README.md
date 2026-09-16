@@ -95,6 +95,7 @@ A handful of features you don't usually find together in a menu-bar app:
 1. Download the latest `ClaudeUsageWidget.zip` from the [**Releases page**](https://github.com/turkbil/claude-usage-widget/releases/latest)
 2. Unzip → drag `ClaudeUsageWidget.app` to `/Applications`
 3. Double-click. Because the binary is signed & notarized, macOS opens it without warnings.
+3b. **macOS 27 (Tahoe successor) and newer:** open **System Settings → Privacy & Security → Full Disk Access**, click **+**, pick `ClaudeUsageWidget.app` (it shows as **Claude Usage**) and turn it on. Without this, macOS silently blocks reading your browser's cookies.
 4. (Optional) Right-click the menu-bar icon → Settings → enable **Run at startup**, set your **hotkey**, configure thresholds, etc.
 
 ### Auto-start at login
@@ -269,6 +270,7 @@ Want to add a language? Copy `Resources/en.lproj/Localizable.strings` to `Resour
 |---|---|
 | `🤖 ?` with "No claude.ai session" | Open your browser and log into claude.ai. Make sure the browser you're logged into is enabled in Settings → Browsers. |
 | `🤖 ?` with "Keychain access denied" | The first launch shows a Keychain prompt — click **Always Allow**. To reset: Keychain Access → "Chrome Safe Storage" → Access Control → add ClaudeUsageWidget. |
+| "Full Disk Access needed" / "Cannot read browser cookie database" (started after updating to macOS 27) | System Settings → Privacy & Security → **Full Disk Access** → **+** → choose `ClaudeUsageWidget.app` → turn on. Do **not** toggle the "Claude" / "claude" entries — those are other apps. |
 | `HTTP 401` | Your claude.ai session expired. Re-login via your browser. |
 | Stale percentage | Open the dropdown → **Refresh now** (⌘R) |
 | Nothing in the menu bar | Check `/tmp/claude-usage-widget.err.log`. Make sure the app is running (`pgrep ClaudeUsageWidget`). |
