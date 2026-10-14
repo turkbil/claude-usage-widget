@@ -126,6 +126,12 @@ struct ClaudeAPI {
     static func findOrgId(cookie: String) throws -> String {
         let json = try getJSON("/api/organizations", cookie: cookie)
         if let arr = json as? [[String: Any]] {
+            // An account can also hold an API-only (Console) org, which answers
+            // /usage with 403 — prefer the org that has the chat capability.
+            for o in arr {
+                if let id = o["uuid"] as? String,
+                   let caps = o["capabilities"] as? [String], caps.contains("chat") { return id }
+            }
             for o in arr {
                 if let id = o["uuid"] as? String { return id }
             }
