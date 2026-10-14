@@ -4,6 +4,14 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] — 2026-10-14
+
+### Fixed
+- **HTTP 403 "permission_error" on accounts that also have an API (Console)
+  organization.** Usage was read from the first organization in the list; when that was
+  an API-only org, `/usage` answered 403 and the widget stopped updating. It now prefers
+  the organization with the chat capability.
+
 ## [1.4.4] — 2026-09-16
 
 ### Fixed
