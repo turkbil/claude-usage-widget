@@ -597,19 +597,11 @@ final class GrantHeaderView: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 18))
         autoresizingMask = [.width]
         let c = AccountColumns(width: width)
-        for (key, col) in [("grants.col_weekly", c.weekly), ("grants.col_fable", c.fable)] {
-            let f = NSTextField(labelWithString: "↺ " + L(key))
-            f.font = .systemFont(ofSize: 10, weight: .heavy)
-            f.textColor = .tertiaryLabelColor
-            f.lineBreakMode = .byClipping
-            f.frame = NSRect(x: col.x, y: 2, width: col.w, height: 14)
-            addSubview(f)
-        }
-        // Today's API spend of all accounts, on the left under the HESAPLAR title.
+        // Today's API spend of all accounts. (Row labels live under each account now.)
         total.font = .systemFont(ofSize: 10, weight: .heavy)
         total.textColor = NSColor(hex: "#d68c45")
         total.lineBreakMode = .byTruncatingTail
-        total.frame = NSRect(x: c.name.x + AccountColumns.markW, y: 2, width: c.name.w - AccountColumns.markW, height: 14)
+        total.frame = NSRect(x: c.name.x + AccountColumns.markW, y: 2, width: width - Layout.hPad - c.name.x - AccountColumns.markW, height: 14)
         addSubview(total)
         update()
     }
@@ -619,24 +611,36 @@ final class GrantHeaderView: NSView {
 /// The table line under an account when free resets are expanded:
 /// weekly cell | Fable cell — "↺ 1 · son 11 Ara" · "0" · "bilinmiyor".
 final class GrantDetailView: NSView {
-    private let weekly = grantCell()
-    private let fable  = grantCell()
-    private let api    = grantCell()   // line 2: developer-console API credits
-    private let seen   = grantCell()   // line 3: when the resets and the credits were read
+    static let rowH: CGFloat = 16
+    private var labels: [NSTextField] = []
+    private var values: [NSTextField] = []
+    private let width: CGFloat
     init(width: CGFloat) {
-        // Three lines that hug their account row; the space below separates the next account.
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 56))
+        self.width = width
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 4 * Self.rowH + 8))
         autoresizingMask = [.width]
         let c = AccountColumns(width: width)
-        let full = width - Layout.hPad - c.weekly.x
-        weekly.frame = NSRect(x: c.weekly.x, y: 41, width: c.weekly.w, height: 14)
-        fable.frame  = NSRect(x: c.fable.x,  y: 41, width: c.fable.w,  height: 14)
-        api.frame    = NSRect(x: c.weekly.x, y: 25, width: full, height: 14)
-        seen.frame   = NSRect(x: c.weekly.x, y: 9,  width: full, height: 14)
-        seen.textColor = .tertiaryLabelColor
-        [weekly, fable, api, seen].forEach(addSubview)
+        // Labels in the empty space under the account name, values from the bar column on.
+        for _ in 0..<4 {
+            let l = NSTextField(labelWithString: "")
+            l.font = .systemFont(ofSize: 11)
+            l.textColor = .tertiaryLabelColor
+            l.lineBreakMode = .byTruncatingTail
+            let v = grantCell()
+            l.frame = NSRect(x: c.name.x + AccountColumns.markW, y: 0, width: c.name.w - AccountColumns.markW, height: 14)
+            v.frame = NSRect(x: c.bar.x, y: 0, width: width - Layout.hPad - c.bar.x, height: 14)
+            addSubview(l); addSubview(v)
+            labels.append(l); values.append(v)
+        }
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    private func set(_ i: Int, _ label: String, _ value: String, _ color: NSColor) {
+        // Rows from the top; the space below separates the next account.
+        let y = frame.height - CGFloat(i + 1) * Self.rowH
+        labels[i].frame.origin.y = y; values[i].frame.origin.y = y
+        labels[i].stringValue = label; values[i].stringValue = value; values[i].textColor = color
+    }
 
     /// " · bugün $1,20" — only when the spend was read today.
     private func todayText(_ r: AccountRecord) -> String {
@@ -645,40 +649,36 @@ final class GrantDetailView: NSView {
     }
 
     func update(_ s: AccountState, isCurrent: Bool) {
-        // Last read: these numbers are from this moment, not live (except the signed-in account).
-        // Last read, separately: resets come from claude.ai, credits from the console.
-        func when(_ d: Date) -> String { Date().timeIntervalSince(d) < 180 ? L("accounts.now") : dayTime(d) }
-        var readBits = [L("grants.seen_resets", when(s.record.grantsSeenAt ?? s.record.seenAt) as NSString)]
-        if let a = s.record.apiSeenAt { readBits.append(L("grants.seen_api", when(a) as NSString)) }
-        seen.stringValue = L("grants.seen", readBits.joined(separator: " · ") as NSString)
-
         let r = s.record
+        let orange = NSColor(hex: "#d68c45")
+        for (i, kind, key) in [(0, "weekly", "grants.row_weekly"), (1, "fable", "grants.row_fable")] {
+            guard r.grants != nil else { set(i, L(key), L("grants.unknown_short"), .tertiaryLabelColor); continue }
+            let (n, first) = grantSummary(s.grantsLeft, kind: kind)
+            if n == 0 { set(i, L(key), "0", .tertiaryLabelColor) }
+            else { set(i, L(key), "↺ \(n)" + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? ""), orange) }
+        }
+
         if r.apiTotal == nil {
-            api.stringValue = L("api.unknown"); api.textColor = .tertiaryLabelColor
+            set(2, L("grants.row_api"), L("api.unknown"), .tertiaryLabelColor)
         } else if let cr = r.apiCredits, !cr.isEmpty {
             let left = cr.reduce(0) { $0 + $1.remaining }, granted = cr.reduce(0) { $0 + $1.granted }
             let first = cr.compactMap { $0.expiresAt }.min()
-            api.stringValue = L("api.credit", money(left) as NSString, money(granted) as NSString)
-                + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
-                + todayText(r)
             let soon = first.map { $0.timeIntervalSinceNow < 3 * 86400 } ?? false
-            api.textColor = soon ? .systemRed : NSColor(hex: "#d68c45")
+            set(2, L("grants.row_api"),
+                L("api.credit", money(left) as NSString, money(granted) as NSString)
+                    + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "") + todayText(r),
+                soon ? .systemRed : orange)
         } else {
-            api.stringValue = L("api.balance", money(r.apiTotal ?? 0) as NSString) + todayText(r)
-            api.textColor = (r.apiTotal ?? 0) > 0 ? .labelColor : .tertiaryLabelColor
+            set(2, L("grants.row_api"), L("api.balance", money(r.apiTotal ?? 0) as NSString) + todayText(r),
+                (r.apiTotal ?? 0) > 0 ? .labelColor : .tertiaryLabelColor)
         }
-        for (field, kind) in [(weekly, "weekly"), (fable, "fable")] {
-            guard s.record.grants != nil else {
-                field.stringValue = L("grants.unknown_short"); field.textColor = .tertiaryLabelColor; continue
-            }
-            let (n, first) = grantSummary(s.grantsLeft, kind: kind)
-            if n == 0 {
-                field.stringValue = "0"; field.textColor = .tertiaryLabelColor
-            } else {
-                field.stringValue = "↺ \(n)" + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
-                field.textColor = NSColor(hex: "#d68c45")
-            }
-        }
+
+        // Last read, separately: resets come from claude.ai, credits from the console.
+        func when(_ d: Date) -> String { Date().timeIntervalSince(d) < 180 ? L("accounts.now") : dayTime(d) }
+        var bits = [L("grants.seen_resets", when(r.grantsSeenAt ?? r.seenAt) as NSString)]
+        if let a = r.apiSeenAt { bits.append(L("grants.seen_api", when(a) as NSString)) }
+        set(3, L("grants.row_seen"), bits.joined(separator: " · "), .tertiaryLabelColor)
+
         toolTip = s.grantsLeft.isEmpty ? nil : s.grantsLeft.map { g in
             L("grant." + g.kind, g.left) + (g.endsAt.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
         }.joined(separator: "\n")

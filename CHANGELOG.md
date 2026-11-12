@@ -12,6 +12,8 @@ Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   plus today's total over all accounts in the expanded header. Read-only; read for the account
   signed in to the console, every 10 minutes or on "Refresh now" — others keep their last value.
 - **Last read** under every account (resets and API separately), so old numbers never look live.
+- The expanded part under each account is a small label | value table — Weekly resets ·
+  Fable resets · API credit · Last read — using the empty space under the account name.
 - One-time notification when a granted API credit expires within 3 days.
 
 ### Fixed
