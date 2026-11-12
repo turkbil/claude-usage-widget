@@ -156,7 +156,7 @@
 "accounts.resets" = "%d resets left";
 "accounts.resets_split" = "%d weekly · %@ %d resets left";
 "accounts.tip_note" = "Entered by hand. Replaced by real data when you sign in to this account.";
-"accounts.stale_note" = "Dimmed = old data · * reset since · ↺ = free reset · orange = plan ending";
+"accounts.stale_note" = "Dimmed = old data · * reset since then · ↺ = free reset · orange = plan ending";
 "accounts.hint_current" = "%d%% unused here · resets in %@";
 "accounts.hint_other" = "Use %@ first · %d%% unused · resets in %@";
 "accounts.columns" = "left · reset · plan ends";
@@ -172,7 +172,7 @@
 "detail.breakdown" = "Usage";
 "detail.plan" = "Plan ends";
 "detail.last_week" = "last week";
-"col.left" = "LEFT";
+"col.left" = "WEEK";
 "col.reset" = "RESETS";
 "col.plan" = "MONTH";
 "detail.grants" = "Free resets";
@@ -216,3 +216,6 @@
 "grants.row_fable" = "Fable resets";
 "grants.row_api" = "API credit";
 "grants.row_seen" = "Last read";
+"col.fable" = "FABLE";
+"accounts.not_signed_in" = "not signed in";
+"accounts.never_read" = "not signed in · never read on this Mac";

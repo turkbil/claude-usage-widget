@@ -15,6 +15,10 @@ Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 - The expanded part under each account is a small label | value table — Weekly resets ·
   Fable resets · API credit · Last read — using the empty space under the account name.
 - One-time notification when a granted API credit expires within 3 days.
+- **Weekly and Fable % left side by side** in the accounts list (`WEEK · FABLE`); both roll over
+  on their own when their reset time passes (`*`).
+- Accounts that were only typed in and never signed in show **"not signed in"** instead of
+  unconfirmed numbers, and are left out of the "use this first" hint. Expired API credit counts as 0.
 
 ### Fixed
 - If the free-reset request is refused, the widget falls back to plain `/usage` and keeps the

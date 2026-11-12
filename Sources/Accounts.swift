@@ -55,6 +55,9 @@ struct AccountState {
     let weeklyLeft: Double?         // remaining %, nil = unknown
     let scopedLeft: [(name: String, left: Double)]
     let rolled: Bool                // a reset happened since the record was taken
+    let scopedRolled: Bool          // the first scoped (Fable) limit has reset since
+    /// Never read by the widget (only typed in by hand): nothing about it is confirmed.
+    var neverSignedIn: Bool { record.source == "note" }
     let weeklyResetsLeft: Int?      // weekly resets before the plan ends
     let scopedResetsLeft: Int?      // same for the first scoped (Fable) limit
     let grantsLeft: [ResetGrant]    // unused, unexpired free resets
@@ -80,6 +83,11 @@ enum AccountMath {
     }
 
     static func state(_ r: AccountRecord, now: Date = Date()) -> AccountState {
+        // Hand-entered rows are not confirmed: show no numbers until the account signs in once.
+        if r.source == "note" {
+            return AccountState(record: r, nextReset: nil, weeklyLeft: nil, scopedLeft: [], rolled: false,
+                                scopedRolled: false, weeklyResetsLeft: nil, scopedResetsLeft: nil, grantsLeft: [])
+        }
         var next: Date? = nil
         var rolled = false
         if let reset = r.weeklyResetsAt { let x = roll(reset, now: now); next = x.0; rolled = x.1 }
@@ -88,19 +96,19 @@ enum AccountMath {
 
         var scopedLeft: [(String, Double)] = []
         var scopedNext: Date? = nil
+        var scopedRolled = false
         for (i, s) in r.scoped.enumerated() {
             var left = max(0, 100 - s.pct)
-            if let ra = s.resetsAt {
-                let (n, didRoll) = roll(ra, now: now)
-                if didRoll { left = 100 }
-                if i == 0 { scopedNext = n }
-            }
+            // Fable resets with the weekly window; use its own date when there is one.
+            let (n, didRoll) = roll(s.resetsAt ?? r.weeklyResetsAt ?? now.addingTimeInterval(1), now: now)
+            if didRoll { left = 100 }
+            if i == 0 { scopedNext = n; scopedRolled = didRoll }
             scopedLeft.append((s.name, left))
         }
 
         return AccountState(
             record: r, nextReset: next, weeklyLeft: weeklyLeft,
-            scopedLeft: scopedLeft, rolled: rolled,
+            scopedLeft: scopedLeft, rolled: rolled, scopedRolled: scopedRolled,
             // Counting resets "before the end" only means something for a plan that ends.
             weeklyResetsLeft: r.planRenews == true ? nil : resetsBefore(r.planEndsAt, next: next),
             scopedResetsLeft: r.planRenews == true ? nil : resetsBefore(r.planEndsAt, next: scopedNext),
@@ -305,14 +313,15 @@ struct AccountColumns {
     /// Fixed slot for the "●" current-account mark, so every name starts at the same x.
     static let markW: CGFloat = 14
     static let barW: CGFloat = 48, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
-    let name, bar, pct, reset, plan: (x: CGFloat, w: CGFloat)
+    let name, bar, pct, fpct, reset, plan: (x: CGFloat, w: CGFloat)
     /// Expanded free-reset sub-row: weekly under bar+KALAN, Fable under SIFIRLAMA+AYLIK.
     let weekly, fable: (x: CGFloat, w: CGFloat)
     init(width: CGFloat) {
         let x0 = Layout.hPad, end = width - Layout.hPad, g = Self.gap
         plan  = (end - Self.planW, Self.planW)
         reset = (plan.x - g - Self.resetW, Self.resetW)
-        pct   = (reset.x - g - Self.pctW, Self.pctW)
+        fpct  = (reset.x - g - Self.pctW, Self.pctW)     // Fable % left, next to the weekly one
+        pct   = (fpct.x - g - Self.pctW, Self.pctW)
         bar   = (pct.x - g - Self.barW, Self.barW)
         name  = (x0, bar.x - g - x0)
         weekly = (bar.x, pct.x + pct.w - bar.x)
@@ -337,6 +346,7 @@ final class AccountsHeaderView: NSView {
         }
         title("section.accounts", c.name, right: false, strong: true)
         title("col.left", c.pct, right: true)
+        title("col.fable", c.fpct, right: true)
         title("col.reset", c.reset, right: true)
         title("col.plan", c.plan, right: true)
     }
@@ -352,6 +362,7 @@ final class AccountRowView: NSView {
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
     private let mark  = NSTextField(labelWithString: "")   // "●" on the signed-in account, empty otherwise
+    private let fable = NSTextField(labelWithString: "")   // Fable % left
     private var isCurrentRow = false
     var onClick: (() -> Void)?
 
@@ -385,7 +396,12 @@ final class AccountRowView: NSView {
         plan.lineBreakMode = .byClipping
         plan.frame = NSRect(x: c.plan.x, y: 5, width: c.plan.w, height: 16)
 
-        [name, bar, left, reset, plan].forEach(addSubview)
+        fable.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        fable.alignment = .right
+        fable.lineBreakMode = .byClipping
+        fable.frame = NSRect(x: c.fpct.x, y: 5, width: c.fpct.w, height: 16)
+
+        [name, bar, left, fable, reset, plan].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -406,9 +422,19 @@ final class AccountRowView: NSView {
             .font: nameFont, .paragraphStyle: para,
             .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
 
+        // Fable % left; "*" = its window has reset since the last read (counted from 0 again).
+        if let f = s.scopedLeft.first {
+            fable.stringValue = "%\(Int(f.left.rounded()))" + (s.scopedRolled ? "*" : "")
+            fable.textColor = leftColor(f.left)
+        } else {
+            fable.stringValue = "—"; fable.textColor = .tertiaryLabelColor
+        }
+
         // Monthly date: plain when it renews (or unknown), orange when the plan
         // is cancelled and really ends that day, faint once the date has passed.
-        if let end = r.planEndsAt {
+        if s.neverSignedIn {
+            plan.stringValue = "—"; plan.textColor = .tertiaryLabelColor
+        } else if let end = r.planEndsAt {
             plan.stringValue = shortDay(end)
             plan.textColor = end < Date() ? .tertiaryLabelColor : (ending ? .systemOrange : .secondaryLabelColor)
         } else {
@@ -432,9 +458,15 @@ final class AccountRowView: NSView {
             reset.stringValue = weekdayTime(n)
             reset.textColor = .secondaryLabelColor
         } else {
-            reset.stringValue = L("accounts.sign_in")
+            // Never read: say so instead of guessing ("giriş yapılmadı").
+            reset.stringValue = L("accounts.not_signed_in")
             reset.textColor = .tertiaryLabelColor
         }
+        // "giriş yapılmadı" is longer than a day/time: let it use the AYLIK cell too.
+        let c = AccountColumns(width: bounds.width)
+        let wide = s.neverSignedIn || s.nextReset == nil
+        reset.frame.size.width = wide ? (c.plan.x + c.plan.w - c.reset.x) : c.reset.w
+        plan.isHidden = wide
 
         toolTip = Self.details(s, isCurrent: isCurrent)
     }
@@ -660,7 +692,7 @@ final class GrantDetailView: NSView {
 
         if r.apiTotal == nil {
             set(2, L("grants.row_api"), L("api.unknown"), .tertiaryLabelColor)
-        } else if let cr = r.apiCredits, !cr.isEmpty {
+        } else if let cr = r.apiCredits?.filter({ $0.expiresAt.map { $0 > Date() } ?? true }), !cr.isEmpty {
             let left = cr.reduce(0) { $0 + $1.remaining }, granted = cr.reduce(0) { $0 + $1.granted }
             let first = cr.compactMap { $0.expiresAt }.min()
             let soon = first.map { $0.timeIntervalSinceNow < 3 * 86400 } ?? false
@@ -675,9 +707,14 @@ final class GrantDetailView: NSView {
 
         // Last read, separately: resets come from claude.ai, credits from the console.
         func when(_ d: Date) -> String { Date().timeIntervalSince(d) < 180 ? L("accounts.now") : dayTime(d) }
-        var bits = [L("grants.seen_resets", when(r.grantsSeenAt ?? r.seenAt) as NSString)]
-        if let a = r.apiSeenAt { bits.append(L("grants.seen_api", when(a) as NSString)) }
-        set(3, L("grants.row_seen"), bits.joined(separator: " · "), .tertiaryLabelColor)
+        if s.neverSignedIn && r.apiSeenAt == nil {
+            set(3, L("grants.row_seen"), L("accounts.never_read"), .tertiaryLabelColor)
+        } else {
+            var bits: [String] = []
+            if !s.neverSignedIn { bits.append(L("grants.seen_resets", when(r.grantsSeenAt ?? r.seenAt) as NSString)) }
+            if let a = r.apiSeenAt { bits.append(L("grants.seen_api", when(a) as NSString)) }
+            set(3, L("grants.row_seen"), bits.joined(separator: " · "), .tertiaryLabelColor)
+        }
 
         toolTip = s.grantsLeft.isEmpty ? nil : s.grantsLeft.map { g in
             L("grant." + g.kind, g.left) + (g.endsAt.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")

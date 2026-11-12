@@ -156,7 +156,7 @@
 "accounts.resets" = "%d sıfırlama kaldı";
 "accounts.resets_split" = "%d haftalık · %@ %d sıfırlama";
 "accounts.tip_note" = "Elle girilen not verisi. O hesaba giriş yapınca gerçek veriyle değişir.";
-"accounts.stale_note" = "Soluk = eski veri · * sıfırlandı · ↺ = hak · turuncu = abonelik bitiyor";
+"accounts.stale_note" = "Soluk = eski veri · * o tarihten beri sıfırlandı · ↺ = hak · turuncu = abonelik bitiyor";
 "accounts.hint_current" = "Bu hesapta %%%d boş · %@ sonra sıfırlanıyor";
 "accounts.hint_other" = "Önce %@ · %%%d boş · %@ sonra sıfırlanıyor";
 "accounts.columns" = "kalan · sıfırlama · abonelik";
@@ -172,7 +172,7 @@
 "detail.breakdown" = "Kullanım";
 "detail.plan" = "Abonelik bitişi";
 "detail.last_week" = "son hafta";
-"col.left" = "KALAN";
+"col.left" = "HAFTA";
 "col.reset" = "SIFIRLAMA";
 "col.plan" = "AYLIK";
 "detail.grants" = "Sıfırlama hakkı";
@@ -216,3 +216,6 @@
 "grants.row_fable" = "Fable hakkı";
 "grants.row_api" = "API kredisi";
 "grants.row_seen" = "Son okuma";
+"col.fable" = "FABLE";
+"accounts.not_signed_in" = "giriş yapılmadı";
+"accounts.never_read" = "giriş yapılmadı · bu hesabın verisi hiç okunmadı";

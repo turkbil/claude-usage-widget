@@ -154,7 +154,7 @@
 "detail.breakdown" = "Usage";
 "detail.plan" = "Fin abo";
 "detail.last_week" = "dernière semaine";
-"col.left" = "RESTE";
+"col.left" = "SEMAINE";
 "col.reset" = "RÉINIT.";
 "col.plan" = "MOIS";
 "detail.grants" = "Réinit. offertes";
@@ -198,3 +198,6 @@
 "grants.row_fable" = "Réinit. Fable";
 "grants.row_api" = "Crédit API";
 "grants.row_seen" = "Dernière lecture";
+"col.fable" = "FABLE";
+"accounts.not_signed_in" = "non connecté";
+"accounts.never_read" = "non connecté · jamais lu";

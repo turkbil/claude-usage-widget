@@ -734,7 +734,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var fiveHourHeader: SectionHeaderView!
     var fiveHourRow: UsageRowView!
     var footer: FooterView!
-    let menuWidth: CGFloat = 470
+    let menuWidth: CGFloat = 520
 
     // Menu items that need live updating
     var versionUpdateItem: NSMenuItem?
