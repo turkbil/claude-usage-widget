@@ -15,6 +15,7 @@ final class UsageHistory {
     struct Sample: Codable {
         let t: TimeInterval   // unix epoch
         let v: Double         // weekly utilization %
+        var a: String? = nil  // account e-mail; samples from before v1.5 have none
     }
 
     private(set) var samples: [Sample] = []
@@ -22,20 +23,24 @@ final class UsageHistory {
     private init() { load() }
 
     /// Append a sample if at least `minSpacingSec` has passed since the last one.
-    func record(weeklyPct: Double) {
+    /// Switching accounts records at once, so the new account's line starts right away.
+    func record(weeklyPct: Double, account: String?) {
         let now = Date().timeIntervalSince1970
-        if let last = samples.last, now - last.t < Self.minSpacingSec { return }
-        samples.append(Sample(t: now, v: weeklyPct))
+        let acct = account?.lowercased()
+        if let last = samples.last, last.a == acct, now - last.t < Self.minSpacingSec { return }
+        samples.append(Sample(t: now, v: weeklyPct, a: acct))
         if samples.count > Self.maxSamples {
             samples.removeFirst(samples.count - Self.maxSamples)
         }
         save()
     }
 
-    /// Samples within the last `seconds` window.
-    func recent(seconds: TimeInterval) -> [Sample] {
+    /// Samples of one account within the last `seconds` window. Untagged samples
+    /// are skipped: they mix every account that was signed in at the time.
+    func recent(seconds: TimeInterval, account: String?) -> [Sample] {
         let cutoff = Date().timeIntervalSince1970 - seconds
-        return samples.filter { $0.t >= cutoff }
+        guard let acct = account?.lowercased() else { return samples.filter { $0.t >= cutoff } }
+        return samples.filter { $0.t >= cutoff && $0.a == acct }
     }
 
     private func load() {

@@ -41,6 +41,9 @@ struct UsageSnapshot {
     let displayName: String?
     let planLabel: String?
     let fetchedAt: Date
+    var email: String? = nil
+    var scopedLimits: [ScopedLimit] = []      // per-model weekly limits, e.g. Fable
+    var planEndsAt: Date? = nil               // end of the paid month
 }
 
 /// "default_claude_max_20x" → "Max 20x"
@@ -65,8 +68,9 @@ struct ClaudeAPI {
         let cookie = try BrowserCookieReader.sessionKey(prefs: PrefsStore.shared.prefs)
         let orgId  = try findOrgId(cookie: cookie)
 
-        let displayName: String? = try? fetchDisplayName(cookie: cookie)
+        let account = try? fetchAccount(cookie: cookie)
         let planLabel:   String? = try? fetchPlanLabel(cookie: cookie, orgId: orgId)
+        let planEndsAt:  Date?   = try? fetchPlanEnd(cookie: cookie, orgId: orgId)
 
         let json = try getJSON("/api/organizations/\(orgId)/usage", cookie: cookie)
 
@@ -93,25 +97,44 @@ struct ClaudeAPI {
             }
         }
 
+        // Per-model weekly limits (e.g. "Fable") live in limits[] as kind "weekly_scoped".
+        var scoped: [ScopedLimit] = []
+        for item in (dict["limits"] as? [[String: Any]]) ?? [] where (item["kind"] as? String) == "weekly_scoped" {
+            let scope = item["scope"] as? [String: Any]
+            let name = ((scope?["model"] as? [String: Any])?["display_name"] as? String)
+                ?? ((scope?["surface"] as? [String: Any])?["display_name"] as? String)
+            guard let n = name, let pct = (item["percent"] as? NSNumber)?.doubleValue else { continue }
+            scoped.append(ScopedLimit(name: n, pct: pct, resetsAt: (item["resets_at"] as? String).flatMap(parseISO)))
+        }
+
         return UsageSnapshot(
             weeklyUtilization:   weeklyUtil,
             weeklyResetsAt:      weeklyResets,
             fiveHourUtilization: fiveUtil,
             fiveHourResetsAt:    fiveResets,
             sonnetUtilization:   sonnetUtil,
-            displayName:         displayName,
+            displayName:         account?.name,
             planLabel:           planLabel,
-            fetchedAt:           Date()
+            fetchedAt:           Date(),
+            email:               account?.email,
+            scopedLimits:        scoped,
+            planEndsAt:          planEndsAt
         )
     }
 
-    static func fetchDisplayName(cookie: String) throws -> String {
+    static func fetchAccount(cookie: String) throws -> (name: String?, email: String?) {
         let json = try getJSON("/api/account", cookie: cookie)
         guard let dict = json as? [String: Any] else { throw WidgetError.message(L("error.api_parse")) }
-        if let n = dict["display_name"] as? String, !n.isEmpty { return n }
-        if let n = dict["full_name"]    as? String, !n.isEmpty { return n }
-        if let e = dict["email_address"] as? String, !e.isEmpty { return e }
-        throw WidgetError.message(L("error.api_parse"))
+        let email = (dict["email_address"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let name = [dict["display_name"], dict["full_name"]].compactMap { $0 as? String }.first { !$0.isEmpty } ?? email
+        return (name, email)
+    }
+
+    /// End of the current paid month. Only this date is read from the billing reply.
+    static func fetchPlanEnd(cookie: String, orgId: String) throws -> Date? {
+        let json = try getJSON("/api/organizations/\(orgId)/subscription_details", cookie: cookie)
+        guard let dict = json as? [String: Any] else { return nil }
+        return ((dict["plan_ending_at"] as? String) ?? (dict["next_charge_at"] as? String)).flatMap(parseISO)
     }
 
     static func fetchPlanLabel(cookie: String, orgId: String) throws -> String {
@@ -400,7 +423,7 @@ final class SparklineView: NSView {
             let yFrac = max(0, min(1, v / 100))
             return NSPoint(
                 x: r.minX + r.width * CGFloat(xFrac),
-                y: r.minY + r.height * (1 - CGFloat(yFrac))
+                y: r.minY + r.height * CGFloat(yFrac)
             )
         }
 
@@ -408,8 +431,8 @@ final class SparklineView: NSView {
         NSColor.tertiaryLabelColor.withAlphaComponent(0.18).setStroke()
         let baseline = NSBezierPath()
         baseline.lineWidth = 0.5
-        baseline.move(to: NSPoint(x: r.minX, y: r.minY))
-        baseline.line(to: NSPoint(x: r.maxX, y: r.minY))
+        baseline.move(to: NSPoint(x: r.minX, y: r.maxY))
+        baseline.line(to: NSPoint(x: r.maxX, y: r.maxY))
         baseline.stroke()
 
         // 2. "Now" vertical guide (subtle).
@@ -435,12 +458,12 @@ final class SparklineView: NSView {
         let area = NSBezierPath()
         area.move(to: past[0])
         for p in past.dropFirst() { area.line(to: p) }
-        area.line(to: NSPoint(x: past.last!.x, y: r.maxY))
-        area.line(to: NSPoint(x: past.first!.x, y: r.maxY))
+        area.line(to: NSPoint(x: past.last!.x, y: r.minY))
+        area.line(to: NSPoint(x: past.first!.x, y: r.minY))
         area.close()
         if let grad = NSGradient(colors: [ember.withAlphaComponent(0.32),
                                          ember.withAlphaComponent(0.00)]) {
-            grad.draw(in: area, angle: -90)
+            grad.draw(in: area, angle: -90)   // top (line) strong → bottom clear
         }
 
         // Solid line for the past
@@ -554,6 +577,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var weeklyHeader: SectionHeaderView!
     var allModelsRow: UsageRowView!
     var sonnetRow: UsageRowView!
+    // Menu items whose views can hide: a hidden *view* still takes its height in an
+    // NSMenu, so the item itself must be hidden.
+    var sonnetItem: NSMenuItem!
+    var forecastItem: NSMenuItem!
+    var fiveHourHeaderItem: NSMenuItem!
+    var fiveHourItem: NSMenuItem!
+    var fiveHourSeparator: NSMenuItem!
+    // Accounts section
+    var accountsAnchor: NSMenuItem!
+    var accountsHeader: SectionHeaderView!
+    var suggestionView: NoteView!
+    var suggestionItem: NSMenuItem!
+    var staleView: NoteView!
+    var staleItem: NSMenuItem!
+    var accountRowItems: [NSMenuItem] = []
     var forecastView: ForecastView!
     var sparklineView: SparklineView!
     var fiveHourHeader: SectionHeaderView!
@@ -594,6 +632,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         titleTickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.updateTitle()
             self?.updateMenuLabels()
+            self?.updateAccountsSection()
         }
 
         // React to preference changes from any settings menu.
@@ -658,13 +697,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             sonnetUtilization:   dict["sonnetUtilization"] as? Double,
             displayName:         dict["displayName"] as? String,
             planLabel:           dict["planLabel"] as? String,
-            fetchedAt:           (dict["fetchedAt"] as? String).flatMap(ClaudeAPI.parseISO) ?? Date()
+            fetchedAt:           (dict["fetchedAt"] as? String).flatMap(ClaudeAPI.parseISO) ?? Date(),
+            email:               dict["email"] as? String,
+            scopedLimits:        ((dict["scoped"] as? [[String: Any]]) ?? []).compactMap { d in
+                guard let n = d["name"] as? String, let p = d["pct"] as? Double else { return nil }
+                return ScopedLimit(name: n, pct: p, resetsAt: (d["resetsAt"] as? String).flatMap(ClaudeAPI.parseISO))
+            },
+            planEndsAt:          (dict["planEndsAt"] as? String).flatMap(ClaudeAPI.parseISO)
         )
         updateTitle()
         updateMenuLabels()
         // Make sure the sparkline shows the cached snapshot on first open.
         sparklineView?.snapshot = lastSnapshot
-        sparklineView?.samples  = UsageHistory.shared.recent(seconds: 7 * 24 * 3600)
+        sparklineView?.samples  = UsageHistory.shared.recent(seconds: 7 * 24 * 3600, account: lastSnapshot?.email)
     }
 
     func saveCache(_ s: UsageSnapshot) {
@@ -680,6 +725,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let v = s.sonnetUtilization   { dict["sonnetUtilization"]   = v }
         if let n = s.displayName         { dict["displayName"]         = n }
         if let p = s.planLabel           { dict["planLabel"]           = p }
+        if let e = s.email               { dict["email"]               = e }
+        if let d = s.planEndsAt          { dict["planEndsAt"]          = iso.string(from: d) }
+        dict["scoped"] = s.scopedLimits.map { l -> [String: Any] in
+            var d: [String: Any] = ["name": l.name, "pct": l.pct]
+            if let r = l.resetsAt { d["resetsAt"] = iso.string(from: r) }
+            return d
+        }
         if let data = try? JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted) {
             try? data.write(to: URL(fileURLWithPath: AppConfig.cachePath))
         }
@@ -703,9 +755,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     VersionChecker.shared.checkIfDue()
                     self.refreshVersionBadge()
                     LocalHTTPServer.shared.setSnapshot(snap)
-                    UsageHistory.shared.record(weeklyPct: snap.weeklyUtilization)
+                    UsageHistory.shared.record(weeklyPct: snap.weeklyUtilization, account: snap.email)
+                    AccountStore.shared.upsert(snap)
+                    self.updateAccountsSection()
                     self.sparklineView?.snapshot = snap
-                    self.sparklineView?.samples = UsageHistory.shared.recent(seconds: 7 * 24 * 3600)
+                    self.sparklineView?.samples = UsageHistory.shared.recent(seconds: 7 * 24 * 3600, account: snap.email)
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -759,11 +813,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(allModelsItem)
 
         sonnetRow = UsageRowView(width: menuWidth)
-        let sonnetItem = NSMenuItem(); sonnetItem.view = sonnetRow
+        sonnetItem = NSMenuItem(); sonnetItem.view = sonnetRow
         menu.addItem(sonnetItem)
 
         forecastView = ForecastView(width: menuWidth)
-        let forecastItem = NSMenuItem(); forecastItem.view = forecastView
+        forecastItem = NSMenuItem(); forecastItem.view = forecastView
         menu.addItem(forecastItem)
 
         // 7-day sparkline trend
@@ -772,15 +826,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sparklineItem = NSMenuItem(); sparklineItem.view = sparklineView
         menu.addItem(sparklineItem)
 
-        menu.addItem(NSMenuItem.separator())
+        fiveHourSeparator = NSMenuItem.separator()
+        menu.addItem(fiveHourSeparator)
 
         fiveHourHeader = SectionHeaderView(width: menuWidth)
-        let fiveHourHeaderItem = NSMenuItem(); fiveHourHeaderItem.view = fiveHourHeader
+        fiveHourHeaderItem = NSMenuItem(); fiveHourHeaderItem.view = fiveHourHeader
         menu.addItem(fiveHourHeaderItem)
 
         fiveHourRow = UsageRowView(width: menuWidth)
-        let fiveHourItem = NSMenuItem(); fiveHourItem.view = fiveHourRow
+        fiveHourItem = NSMenuItem(); fiveHourItem.view = fiveHourRow
         menu.addItem(fiveHourItem)
+
+        // Accounts seen on this Mac (last-seen values for the signed-out ones)
+        menu.addItem(NSMenuItem.separator())
+        accountsHeader = SectionHeaderView(width: menuWidth)
+        accountsAnchor = NSMenuItem(); accountsAnchor.view = accountsHeader
+        menu.addItem(accountsAnchor)
+
+        suggestionView = NoteView(width: menuWidth, height: 36)
+        suggestionView.field.textColor = .systemOrange
+        suggestionItem = NSMenuItem(); suggestionItem.view = suggestionView
+        menu.addItem(suggestionItem)
+        // account rows are inserted here by updateAccountsSection()
+        staleView = NoteView(width: menuWidth, height: 56)
+        staleView.field.textColor = .tertiaryLabelColor
+        staleView.field.font = .systemFont(ofSize: 10)
+        staleView.field.stringValue = L("accounts.stale_note")
+        staleItem = NSMenuItem(); staleItem.view = staleView
+        menu.addItem(staleItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -827,6 +900,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(creditX)
 
         statusItem.menu = menu
+        updateAccountsSection()
+    }
+
+    /// Rebuilds the account rows and the 48-hour hint from AccountStore.
+    func updateAccountsSection() {
+        guard let menu = statusItem.menu, accountsAnchor != nil else { return }
+        let current = lastSnapshot?.email?.lowercased()
+        let states = AccountStore.shared.states(currentEmail: current)
+
+        let empty = states.isEmpty
+        accountsAnchor.isHidden = empty
+        staleItem.isHidden = empty || states.count < 2
+        accountsHeader.update(L("section.accounts"), trailing: empty ? "" : L("accounts.count", states.count))
+
+        if let s = AccountMath.suggestion(states), let next = s.nextReset, let left = s.weeklyLeft {
+            let pct = Int(left.rounded())
+            let text = s.record.email == current
+                ? L("accounts.hint_current", pct, formatRemaining(next) as NSString)
+                : L("accounts.hint_other", s.record.email as NSString, pct, formatRemaining(next) as NSString)
+            suggestionView.field.stringValue = "⏳ " + text
+            suggestionItem.isHidden = false
+        } else {
+            suggestionItem.isHidden = true
+        }
+
+        // Reuse rows when the count is unchanged (the menu may be open).
+        if accountRowItems.count != states.count {
+            for item in accountRowItems { menu.removeItem(item) }
+            accountRowItems = states.map { _ in
+                let item = NSMenuItem()
+                item.view = AccountRowView(width: menuWidth)
+                return item
+            }
+            var at = menu.index(of: suggestionItem) + 1
+            for item in accountRowItems { menu.insertItem(item, at: at); at += 1 }
+        }
+        for (item, s) in zip(accountRowItems, states) {
+            (item.view as? AccountRowView)?.update(s, isCurrent: s.record.email == current)
+        }
     }
 
     private func creditAttributed(_ s: String) -> NSAttributedString {
@@ -851,11 +963,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let s = lastSnapshot {
             weeklyHeader.update(L("section.weekly"), trailing: remainingWithSuffix(s.weeklyResetsAt))
             allModelsRow.update(label: L("label.all_models"), percent: s.weeklyUtilization)
-            if let sonnet = s.sonnetUtilization {
+            if let f = s.scopedLimits.first {
+                sonnetRow.update(label: f.name, percent: f.pct)
+                sonnetItem.isHidden = false
+            } else if let sonnet = s.sonnetUtilization {
                 sonnetRow.update(label: L("label.sonnet"), percent: sonnet)
-                sonnetRow.isHidden = false
+                sonnetItem.isHidden = false
             } else {
-                sonnetRow.isHidden = true
+                sonnetItem.isHidden = true
             }
 
             // §13 Forecast — show only when meaningful
@@ -865,18 +980,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     return false
                 }()
                 forecastView.update(line, isWarning: isWarn)
+                forecastItem.isHidden = false
             } else {
                 forecastView.update(nil)
+                forecastItem.isHidden = true
             }
 
             if let u = s.fiveHourUtilization, let r = s.fiveHourResetsAt {
                 fiveHourHeader.update(L("section.five_hour"), trailing: remainingWithSuffix(r))
                 fiveHourRow.update(label: L("label.usage"), percent: u)
-                fiveHourRow.isHidden = false
-                fiveHourHeader.isHidden = false
+                fiveHourItem.isHidden = false
+                fiveHourHeaderItem.isHidden = false
+                fiveHourSeparator.isHidden = false
             } else {
-                fiveHourHeader.isHidden = true
-                fiveHourRow.isHidden    = true
+                fiveHourHeaderItem.isHidden = true
+                fiveHourItem.isHidden       = true
+                fiveHourSeparator.isHidden  = true
             }
         } else {
             forecastView?.update(nil)

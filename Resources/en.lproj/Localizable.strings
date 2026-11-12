@@ -140,3 +140,22 @@
 "mcp.install_intro" = "Add this snippet to your ~/.claude.json, then restart Claude Code. Claude will be able to call get_usage to see its own weekly limit.";
 "mcp.add_to_file"   = "~/.claude.json";
 "mcp.copy_json"     = "Copy JSON";
+
+/* Accounts (v1.5) */
+"section.accounts" = "ACCOUNTS";
+"accounts.count" = "%d accounts";
+"accounts.now" = "now";
+"accounts.ago" = "%@ ago";
+"time.hours_short" = "%dh";
+"time.days_short" = "%dd";
+"accounts.left" = "%d%% left";
+"accounts.no_data" = "no data · sign in once";
+"accounts.scoped_left" = "%@ %d%% left";
+"accounts.plan_until" = "Plan until %@";
+"accounts.plan_passed" = "date passed";
+"accounts.resets" = "%d resets left";
+"accounts.resets_split" = "%d weekly · %@ %d resets left";
+"accounts.tip_note" = "Entered by hand. Replaced by real data when you sign in to this account.";
+"accounts.stale_note" = "Other accounts show the values from their last sign-in and may be out of date; sign in to an account to update it. * should have reset since.";
+"accounts.hint_current" = "%d%% of this account is unused and resets in %@ — use it before it is lost.";
+"accounts.hint_other" = "Use %@ first: %d%% unused, resets in %@.";

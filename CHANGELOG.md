@@ -4,6 +4,25 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Accounts section.** Every claude.ai account signed in on this Mac is remembered in
+  `~/.claude-usage-widget-accounts.json`: e-mail, weekly % left, per-model (Fable) % left,
+  weekly reset day/time and countdown, end of the paid month and how many weekly resets
+  are left before it. Signed-out accounts show their last-seen values, marked as possibly
+  out of date (sign in to that account once to update it).
+- **"Use this account first" hint.** When an account with unused weekly quota resets
+  within 48 hours, the popup says so.
+- **Per-model weekly limit row** (e.g. Fable) read from the new `limits[]` field.
+
+### Fixed
+- The trend chart was drawn upside down.
+- Hidden rows (5-hour window, forecast, Sonnet) still took their height, leaving large
+  empty gaps in the popup.
+- History mixed every account that was signed in; samples are now tagged per account and
+  the chart shows only the current one.
+
 ## [1.4.5] — 2026-10-14
 
 ### Fixed

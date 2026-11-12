@@ -140,3 +140,22 @@
 "mcp.install_intro" = "Bu parçayı ~/.claude.json dosyana ekle, sonra Claude Code'u yeniden başlat. Claude artık kendi haftalık limitini görmek için get_usage'ı çağırabilir.";
 "mcp.add_to_file"   = "~/.claude.json";
 "mcp.copy_json"     = "JSON'u kopyala";
+
+/* Accounts (v1.5) */
+"section.accounts" = "HESAPLAR";
+"accounts.count" = "%d hesap";
+"accounts.now" = "şimdi";
+"accounts.ago" = "%@ önce";
+"time.hours_short" = "%ds";
+"time.days_short" = "%dg";
+"accounts.left" = "%%%d kaldı";
+"accounts.no_data" = "veri yok · bir kez giriş yapın";
+"accounts.scoped_left" = "%@ %%%d kaldı";
+"accounts.plan_until" = "Abonelik %@";
+"accounts.plan_passed" = "tarih geçti";
+"accounts.resets" = "%d sıfırlama kaldı";
+"accounts.resets_split" = "%d haftalık · %@ %d sıfırlama";
+"accounts.tip_note" = "Elle girilen not verisi. O hesaba giriş yapınca gerçek veriyle değişir.";
+"accounts.stale_note" = "Diğer hesaplar son girişteki veridir, güncel olmayabilir; güncellemek için o hesaba giriş yapın. * = o tarihten beri sıfırlanmış olmalı.";
+"accounts.hint_current" = "Bu hesapta %%%d boş, %@ sonra sıfırlanıyor; boşa gitmesin.";
+"accounts.hint_other" = "Önce %@ hesabını kullanın: %%%d boş, %@ sonra sıfırlanıyor.";
