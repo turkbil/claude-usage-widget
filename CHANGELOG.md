@@ -4,6 +4,12 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] — 2026-11-13
+
+### Changed
+- The menu-bar hint reads `⏳ claude1` (same mark as the popup hint) instead of `→ claude1`,
+  which looked like the signed-in account; hovering the title explains it.
+
 ## [1.5.1] — 2026-11-13
 
 ### Added
