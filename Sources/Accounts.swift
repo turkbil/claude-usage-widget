@@ -29,7 +29,8 @@ struct AccountRecord: Codable {
     var planRenews: Bool? = nil     // true = renews that day · false = cancelled · nil = unknown
     var seenAt: Date
     var source: String              // "live" (read by the widget) | "note" (entered by hand)
-    var grants: [ResetGrant]? = nil // free resets on hand (nil in records from before v1.5)
+    var grants: [ResetGrant]? = nil // free resets on hand (nil = never read)
+    var grantsSeenAt: Date? = nil   // when the resets above were read (can be older than seenAt)
 }
 
 /// What a record means *now*: weekly windows that have passed since the record
@@ -141,7 +142,10 @@ final class AccountStore {
             weeklyPct: snap.weeklyUtilization, weeklyResetsAt: snap.weeklyResetsAt,
             scoped: snap.scopedLimits, planEndsAt: snap.planEndsAt ?? records.first { $0.email == email }?.planEndsAt,
             planRenews: snap.planRenews ?? records.first { $0.email == email }?.planRenews,
-            seenAt: snap.fetchedAt, source: "live", grants: snap.grants
+            seenAt: snap.fetchedAt, source: "live",
+            // Not read this time → keep the last known resets and their date (never turn them into 0).
+            grants: snap.grants ?? records.first { $0.email == email }?.grants,
+            grantsSeenAt: snap.grants != nil ? snap.fetchedAt : records.first { $0.email == email }?.grantsSeenAt
         )
         if let i = records.firstIndex(where: { $0.email == email }) { records[i] = rec }
         else { records.append(rec) }
@@ -189,6 +193,13 @@ func weekdayTime(_ d: Date) -> String {
     f.setLocalizedDateFormatFromTemplate("EEE HH:mm")
     // resets_at can be …:59:59.9 — round to the nearest minute so it reads 14:00, not 13:59.
     return f.string(from: Date(timeIntervalSince1970: (d.timeIntervalSince1970 / 60).rounded() * 60))
+}
+
+/// "13 Kas 01:59"
+func dayTime(_ d: Date) -> String {
+    let f = DateFormatter()
+    f.setLocalizedDateFormatFromTemplate("d MMM HH:mm")
+    return f.string(from: d)
 }
 
 /// "13 Kas"
@@ -543,18 +554,29 @@ final class GrantHeaderView: NSView {
 final class GrantDetailView: NSView {
     private let weekly = grantCell()
     private let fable  = grantCell()
+    private let seen   = grantCell()   // line 2: when this account's data was read
+    private let api    = grantCell()   // line 2, right: API credits (filled once a source exists)
     init(width: CGFloat) {
-        // Text hugs its account row; the extra space below separates it from the next account.
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 24))
+        // Two lines that hug their account row; the space below separates the next account.
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 40))
         autoresizingMask = [.width]
         let c = AccountColumns(width: width)
-        weekly.frame = NSRect(x: c.weekly.x, y: 9, width: c.weekly.w, height: 14)
-        fable.frame  = NSRect(x: c.fable.x,  y: 9, width: c.fable.w,  height: 14)
-        addSubview(weekly); addSubview(fable)
+        weekly.frame = NSRect(x: c.weekly.x, y: 25, width: c.weekly.w, height: 14)
+        fable.frame  = NSRect(x: c.fable.x,  y: 25, width: c.fable.w,  height: 14)
+        // Spans both columns until API credits take the right half.
+        seen.frame   = NSRect(x: c.weekly.x, y: 9,  width: width - Layout.hPad - c.weekly.x, height: 14)
+        api.frame    = NSRect(x: c.fable.x,  y: 9,  width: c.fable.w,  height: 14)
+        seen.textColor = .tertiaryLabelColor
+        api.textColor  = .tertiaryLabelColor
+        [weekly, fable, seen, api].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    func update(_ s: AccountState) {
+    func update(_ s: AccountState, isCurrent: Bool) {
+        // Last read: these numbers are from this moment, not live (except the signed-in account).
+        let read = s.record.grantsSeenAt ?? s.record.seenAt
+        seen.stringValue = L("grants.seen", (Date().timeIntervalSince(read) < 180 ? L("accounts.now") : dayTime(read)) as NSString)
+        api.stringValue = ""
         for (field, kind) in [(weekly, "weekly"), (fable, "fable")] {
             guard s.record.grants != nil else {
                 field.stringValue = L("grants.unknown_short"); field.textColor = .tertiaryLabelColor; continue

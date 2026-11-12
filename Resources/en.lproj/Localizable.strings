@@ -203,3 +203,4 @@
 "grants.unknown_short" = "unknown";
 "footer.refresh" = "Refresh now";
 "footer.refreshing" = "Refreshing…";
+"grants.seen" = "last read: %@";

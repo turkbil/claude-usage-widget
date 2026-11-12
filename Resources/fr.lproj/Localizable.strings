@@ -185,3 +185,4 @@
 "grants.unknown_short" = "inconnu";
 "footer.refresh" = "Actualiser";
 "footer.refreshing" = "Actualisation…";
+"grants.seen" = "lu le : %@";

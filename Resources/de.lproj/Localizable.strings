@@ -185,3 +185,4 @@
 "grants.unknown_short" = "unbekannt";
 "footer.refresh" = "Jetzt aktualisieren";
 "footer.refreshing" = "Wird aktualisiert…";
+"grants.seen" = "zuletzt gelesen: %@";

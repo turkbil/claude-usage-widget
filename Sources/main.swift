@@ -47,7 +47,7 @@ struct UsageSnapshot {
     var planRenews: Bool? = nil               // true = auto-renews that day, false = cancelled/ending
     var breakdown: [(name: String, pct: Double)] = []   // where the week went: Claude Code, Chat, …
     var scopedShare: Double? = nil            // max % of the weekly limit the first scoped model may use
-    var grants: [ResetGrant] = []             // free limit resets on hand
+    var grants: [ResetGrant]? = nil           // free resets on hand; nil = not read this time (plain /usage)
 }
 
 /// "default_claude_max_20x" → "Max 20x"
@@ -126,13 +126,14 @@ struct ClaudeAPI {
                       let p = (row["percent"] as? NSNumber)?.doubleValue else { return nil }
                 return (n, p)
             }
-        var grants: [ResetGrant] = []
+        // Only a present cedar_ember block counts as "read"; a missing one keeps the last known resets.
+        var grants: [ResetGrant]? = (dict["cedar_ember"] as? [String: Any]) != nil ? [] : nil
         for g in ((dict["cedar_ember"] as? [String: Any])?["grants"] as? [[String: Any]]) ?? [] where (g["paused"] as? Bool) != true {
             let clears = g["clears"] as? [String] ?? []
             let kind = (g["gives_back_weekly"] as? Bool) == true ? "fable"
                      : clears.contains("seven_day") ? "weekly"
                      : clears.contains("five_hour") ? "session" : "other"
-            grants.append(ResetGrant(kind: kind,
+            grants?.append(ResetGrant(kind: kind,
                                      left: (g["resets_left"] as? NSNumber)?.intValue ?? 0,
                                      total: (g["resets_total"] as? NSNumber)?.intValue ?? 0,
                                      endsAt: (g["ends_at"] as? String).flatMap(parseISO)))
@@ -1107,7 +1108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         grantsToggleItem.isHidden = empty
         grantHeaderItem.isHidden = empty || !grantsExpanded
         for (item, s) in zip(grantDetailItems, states) {
-            (item.view as? GrantDetailView)?.update(s)
+            (item.view as? GrantDetailView)?.update(s, isCurrent: s.record.email == current)
             item.isHidden = !grantsExpanded
         }
         for (item, s) in zip(accountRowItems, states) {
@@ -1143,7 +1144,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        let onHand = s.grants.filter { $0.left > 0 && ($0.endsAt.map { $0 > Date() } ?? true) }
+        let known = s.grants ?? AccountStore.shared.records.first { $0.email == s.email?.lowercased() }?.grants ?? []
+        let onHand = known.filter { $0.left > 0 && ($0.endsAt.map { $0 > Date() } ?? true) }
         if !onHand.isEmpty {
             rows.append(DetailRow(label: L("detail.grants"), value: grantText(onHand), color: NSColor(hex: "#d68c45")))
         }

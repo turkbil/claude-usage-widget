@@ -203,3 +203,4 @@
 "grants.unknown_short" = "bilinmiyor";
 "footer.refresh" = "Şimdi yenile";
 "footer.refreshing" = "Yenileniyor…";
+"grants.seen" = "son okuma: %@";
