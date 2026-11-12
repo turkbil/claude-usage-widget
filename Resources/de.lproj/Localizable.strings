@@ -185,4 +185,10 @@
 "grants.unknown_short" = "unbekannt";
 "footer.refresh" = "Jetzt aktualisieren";
 "footer.refreshing" = "Wird aktualisiert…";
-"grants.seen" = "zuletzt gelesen: %@";
+"grants.seen" = "zuletzt gelesen · %@";
+"grants.seen_resets" = "Resets %@";
+"grants.seen_api" = "API %@";
+"api.unknown" = "API: unbekannt · nach Konsolen-Anmeldung";
+"api.credit" = "API %@ / %@ gewährt";
+"api.balance" = "API %@";
+"notification.api_end" = "%@: %@ API-Guthaben verfällt am %@.";

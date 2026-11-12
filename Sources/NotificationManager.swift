@@ -76,6 +76,13 @@ final class NotificationManager {
                 once("plan.\(s.record.email).\(Int(end.timeIntervalSince1970))",
                      L("notification.plan_end", name as NSString, shortDay(end) as NSString))
             }
+            // Granted API credit about to expire unused.
+            for c in s.record.apiCredits ?? [] where c.remaining > 0 {
+                if let end = c.expiresAt, end > now, end.timeIntervalSince(now) <= soon {
+                    once("api.\(s.record.email).\(Int(end.timeIntervalSince1970))",
+                         L("notification.api_end", name as NSString, money(c.remaining) as NSString, shortDay(end) as NSString))
+                }
+            }
             for g in s.grantsLeft {
                 if let end = g.endsAt, end.timeIntervalSince(now) <= soon {
                     once("grant.\(s.record.email).\(g.kind).\(Int(end.timeIntervalSince1970))",

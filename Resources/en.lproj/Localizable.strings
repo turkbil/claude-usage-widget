@@ -203,4 +203,10 @@
 "grants.unknown_short" = "unknown";
 "footer.refresh" = "Refresh now";
 "footer.refreshing" = "Refreshing…";
-"grants.seen" = "last read: %@";
+"grants.seen" = "last read · %@";
+"grants.seen_resets" = "resets %@";
+"grants.seen_api" = "API %@";
+"api.unknown" = "API: unknown · shows after a console sign-in";
+"api.credit" = "API %@ / %@ granted";
+"api.balance" = "API %@";
+"notification.api_end" = "%@ has %@ of API credit expiring on %@.";

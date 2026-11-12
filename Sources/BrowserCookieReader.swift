@@ -48,16 +48,17 @@ struct BrowserSource {
 enum BrowserCookieReader {
 
     /// Try each enabled browser in order; first one with a session wins.
-    static func sessionKey(prefs: Preferences) throws -> String {
+    /// host: "claude.ai" (chat) or "platform.claude.com" (developer console, API credits).
+    static func sessionKey(prefs: Preferences, host: String = "claude.ai") throws -> String {
         var lastError: Error?
         for source in BrowserSource.enabled(in: prefs) {
-            do { return try sessionKey(from: source) }
+            do { return try sessionKey(from: source, host: host) }
             catch { lastError = error }
         }
         throw lastError ?? WidgetError.message(L("error.no_session"))
     }
 
-    static func sessionKey(from source: BrowserSource) throws -> String {
+    static func sessionKey(from source: BrowserSource, host: String = "claude.ai") throws -> String {
         // Copy DB to avoid lock conflicts.
         let tmp = NSTemporaryDirectory() + "claude_widget_\(source.id)_\(UUID().uuidString).db"
         try? FileManager.default.removeItem(atPath: tmp)
@@ -79,7 +80,9 @@ enum BrowserCookieReader {
         }
         defer { sqlite3_close(db) }
 
-        let sql = "SELECT encrypted_value FROM cookies WHERE host_key LIKE '%claude.ai%' AND name='sessionKey' ORDER BY length(encrypted_value) DESC LIMIT 1"
+        // claude.ai must not match platform.claude.com's cookie and vice versa.
+        let hostClause = host == "claude.ai" ? "host_key IN ('claude.ai', '.claude.ai')" : "host_key LIKE '%\(host)%'"
+        let sql = "SELECT encrypted_value FROM cookies WHERE \(hostClause) AND name='sessionKey' ORDER BY last_update_utc DESC LIMIT 1"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             throw WidgetError.message(L("error.cookie_db"))

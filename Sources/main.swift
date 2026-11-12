@@ -206,8 +206,35 @@ struct ClaudeAPI {
         throw WidgetError.message(L("error.org_not_found"))
     }
 
-    static func getJSON(_ path: String, cookie: String) throws -> Any {
-        guard let url = URL(string: "https://claude.ai\(path)") else {
+    /// API credits of the account signed in at the developer console (platform.claude.com).
+    /// Read-only GETs; the claim endpoint is never called. Returns nil when no console session.
+    static func fetchConsoleCredits() -> (email: String, total: Double, credits: [APICredit])? {
+        let base = "https://platform.claude.com"
+        guard let cookie = try? BrowserCookieReader.sessionKey(prefs: PrefsStore.shared.prefs, host: "platform.claude.com"),
+              let acct = (try? getJSON("/api/account", cookie: cookie, base: base)) as? [String: Any],
+              let email = acct["email_address"] as? String,
+              let orgs = (try? getJSON("/api/organizations", cookie: cookie, base: base)) as? [[String: Any]] else { return nil }
+        var total = 0.0, credits: [APICredit] = [], anyRead = false
+        for o in orgs {
+            guard let id = o["uuid"] as? String,
+                  let c = (try? getJSON("/api/organizations/\(id)/prepaid/credits", cookie: cookie, base: base)) as? [String: Any]
+            else { continue }   // chat-only orgs answer 403
+            anyRead = true
+            total += ((c["amount"] as? NSNumber)?.doubleValue ?? 0) / 100
+            for t in (c["promo_tranches"] as? [[String: Any]]) ?? [] {
+                let rem = ((t["remaining_amount_minor_units"] as? NSNumber)?.doubleValue ?? 0) / 100
+                guard rem > 0 else { continue }
+                credits.append(APICredit(name: t["name"] as? String ?? "API credit",
+                                         remaining: rem,
+                                         granted: ((t["granted_amount_minor_units"] as? NSNumber)?.doubleValue ?? 0) / 100,
+                                         expiresAt: (t["expires_at"] as? String).flatMap(parseISO)))
+            }
+        }
+        return anyRead ? (email, total, credits) : (email, 0, [])
+    }
+
+    static func getJSON(_ path: String, cookie: String, base: String = "https://claude.ai") throws -> Any {
+        guard let url = URL(string: "\(base)\(path)") else {
             throw WidgetError.message(L("error.empty_response"))
         }
         var req = URLRequest(url: url)
@@ -826,7 +853,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Refresh
 
-    func refresh() {
+    /// Console (API credit) data changes slowly: read it at most every 10 minutes,
+    /// or right away when the user presses "Refresh now".
+    var lastConsoleRead = Date.distantPast
+
+    func refresh(forceConsole: Bool = false) {
+        if forceConsole || Date().timeIntervalSince(lastConsoleRead) > 600 {
+            lastConsoleRead = Date()
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                guard let c = ClaudeAPI.fetchConsoleCredits() else { return }
+                DispatchQueue.main.async {
+                    AccountStore.shared.upsertAPI(email: c.email, total: c.total, credits: c.credits, at: Date())
+                    self?.updateAccountsSection()
+                }
+            }
+        }
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
             do {
@@ -986,7 +1027,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         footer = FooterView(width: menuWidth)
-        footer.onRefresh = { [weak self] in self?.refresh() }
+        footer.onRefresh = { [weak self] in self?.refresh(forceConsole: true) }
         let footerItem = NSMenuItem(); footerItem.view = footer
         menu.addItem(footerItem)
 
@@ -1644,7 +1685,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Static menu actions
 
-    @objc func menuRefresh()  { refresh() }
+    @objc func menuRefresh()  { refresh(forceConsole: true) }
     @objc func menuOpenUsage() {
         if let url = URL(string: "https://claude.ai/settings/usage") {
             NSWorkspace.shared.open(url)

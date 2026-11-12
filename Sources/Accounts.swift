@@ -16,6 +16,15 @@ struct ResetGrant: Codable {
     let endsAt: Date?
 }
 
+/// One granted API credit (developer console → prepaid/credits → promo_tranches),
+/// e.g. "API credit (Ultra)": $200 granted, $4.42 left, expires 16 Nov.
+struct APICredit: Codable {
+    let name: String
+    let remaining: Double      // USD
+    let granted: Double        // USD
+    let expiresAt: Date?
+}
+
 /// Last-seen state of one claude.ai account. The widget can only read the account
 /// that is currently signed in to the browser, so every other account keeps the
 /// values from the last time it was signed in (shown as "may be out of date").
@@ -31,6 +40,9 @@ struct AccountRecord: Codable {
     var source: String              // "live" (read by the widget) | "note" (entered by hand)
     var grants: [ResetGrant]? = nil // free resets on hand (nil = never read)
     var grantsSeenAt: Date? = nil   // when the resets above were read (can be older than seenAt)
+    var apiTotal: Double? = nil     // developer-console credit balance, USD (nil = never read)
+    var apiCredits: [APICredit]? = nil
+    var apiSeenAt: Date? = nil      // console data is read only for the account signed in there
 }
 
 /// What a record means *now*: weekly windows that have passed since the record
@@ -145,10 +157,28 @@ final class AccountStore {
             seenAt: snap.fetchedAt, source: "live",
             // Not read this time → keep the last known resets and their date (never turn them into 0).
             grants: snap.grants ?? records.first { $0.email == email }?.grants,
-            grantsSeenAt: snap.grants != nil ? snap.fetchedAt : records.first { $0.email == email }?.grantsSeenAt
+            grantsSeenAt: snap.grants != nil ? snap.fetchedAt : records.first { $0.email == email }?.grantsSeenAt,
+            apiTotal: records.first { $0.email == email }?.apiTotal,
+            apiCredits: records.first { $0.email == email }?.apiCredits,
+            apiSeenAt: records.first { $0.email == email }?.apiSeenAt
         )
         if let i = records.firstIndex(where: { $0.email == email }) { records[i] = rec }
         else { records.append(rec) }
+        save()
+    }
+
+    /// Console credits of the account signed in at platform.claude.com (may be a
+    /// different account than the one signed in at claude.ai).
+    func upsertAPI(email: String, total: Double, credits: [APICredit], at: Date) {
+        let e = email.lowercased()
+        if let i = records.firstIndex(where: { $0.email == e }) {
+            records[i].apiTotal = total; records[i].apiCredits = credits; records[i].apiSeenAt = at
+        } else {
+            var r = AccountRecord(email: e, plan: nil, weeklyPct: nil, weeklyResetsAt: nil, scoped: [],
+                                  planEndsAt: nil, seenAt: at, source: "live")
+            r.apiTotal = total; r.apiCredits = credits; r.apiSeenAt = at
+            records.append(r)
+        }
         save()
     }
 
@@ -193,6 +223,15 @@ func weekdayTime(_ d: Date) -> String {
     f.setLocalizedDateFormatFromTemplate("EEE HH:mm")
     // resets_at can be …:59:59.9 — round to the nearest minute so it reads 14:00, not 13:59.
     return f.string(from: Date(timeIntervalSince1970: (d.timeIntervalSince1970 / 60).rounded() * 60))
+}
+
+/// "$4,42" in the user's locale.
+func money(_ v: Double) -> String {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.currencyCode = "USD"
+    f.maximumFractionDigits = v >= 100 ? 0 : 2
+    return f.string(from: NSNumber(value: v)) ?? String(format: "$%.2f", v)
 }
 
 /// "13 Kas 01:59"
@@ -554,29 +593,45 @@ final class GrantHeaderView: NSView {
 final class GrantDetailView: NSView {
     private let weekly = grantCell()
     private let fable  = grantCell()
-    private let seen   = grantCell()   // line 2: when this account's data was read
-    private let api    = grantCell()   // line 2, right: API credits (filled once a source exists)
+    private let api    = grantCell()   // line 2: developer-console API credits
+    private let seen   = grantCell()   // line 3: when the resets and the credits were read
     init(width: CGFloat) {
-        // Two lines that hug their account row; the space below separates the next account.
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 40))
+        // Three lines that hug their account row; the space below separates the next account.
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 56))
         autoresizingMask = [.width]
         let c = AccountColumns(width: width)
-        weekly.frame = NSRect(x: c.weekly.x, y: 25, width: c.weekly.w, height: 14)
-        fable.frame  = NSRect(x: c.fable.x,  y: 25, width: c.fable.w,  height: 14)
-        // Spans both columns until API credits take the right half.
-        seen.frame   = NSRect(x: c.weekly.x, y: 9,  width: width - Layout.hPad - c.weekly.x, height: 14)
-        api.frame    = NSRect(x: c.fable.x,  y: 9,  width: c.fable.w,  height: 14)
+        let full = width - Layout.hPad - c.weekly.x
+        weekly.frame = NSRect(x: c.weekly.x, y: 41, width: c.weekly.w, height: 14)
+        fable.frame  = NSRect(x: c.fable.x,  y: 41, width: c.fable.w,  height: 14)
+        api.frame    = NSRect(x: c.weekly.x, y: 25, width: full, height: 14)
+        seen.frame   = NSRect(x: c.weekly.x, y: 9,  width: full, height: 14)
         seen.textColor = .tertiaryLabelColor
-        api.textColor  = .tertiaryLabelColor
-        [weekly, fable, seen, api].forEach(addSubview)
+        [weekly, fable, api, seen].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
     func update(_ s: AccountState, isCurrent: Bool) {
         // Last read: these numbers are from this moment, not live (except the signed-in account).
-        let read = s.record.grantsSeenAt ?? s.record.seenAt
-        seen.stringValue = L("grants.seen", (Date().timeIntervalSince(read) < 180 ? L("accounts.now") : dayTime(read)) as NSString)
-        api.stringValue = ""
+        // Last read, separately: resets come from claude.ai, credits from the console.
+        func when(_ d: Date) -> String { Date().timeIntervalSince(d) < 180 ? L("accounts.now") : dayTime(d) }
+        var readBits = [L("grants.seen_resets", when(s.record.grantsSeenAt ?? s.record.seenAt) as NSString)]
+        if let a = s.record.apiSeenAt { readBits.append(L("grants.seen_api", when(a) as NSString)) }
+        seen.stringValue = L("grants.seen", readBits.joined(separator: " · ") as NSString)
+
+        let r = s.record
+        if r.apiTotal == nil {
+            api.stringValue = L("api.unknown"); api.textColor = .tertiaryLabelColor
+        } else if let cr = r.apiCredits, !cr.isEmpty {
+            let left = cr.reduce(0) { $0 + $1.remaining }, granted = cr.reduce(0) { $0 + $1.granted }
+            let first = cr.compactMap { $0.expiresAt }.min()
+            api.stringValue = L("api.credit", money(left) as NSString, money(granted) as NSString)
+                + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
+            let soon = first.map { $0.timeIntervalSinceNow < 3 * 86400 } ?? false
+            api.textColor = soon ? .systemRed : NSColor(hex: "#d68c45")
+        } else {
+            api.stringValue = L("api.balance", money(r.apiTotal ?? 0) as NSString)
+            api.textColor = (r.apiTotal ?? 0) > 0 ? .labelColor : .tertiaryLabelColor
+        }
         for (field, kind) in [(weekly, "weekly"), (fable, "fable")] {
             guard s.record.grants != nil else {
                 field.stringValue = L("grants.unknown_short"); field.textColor = .tertiaryLabelColor; continue
