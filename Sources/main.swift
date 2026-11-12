@@ -632,6 +632,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var staleItem: NSMenuItem!
     var accountRowItems: [NSMenuItem] = []
     var grantDetailItems: [NSMenuItem] = []      // one per account, shown when expanded
+    var grantHeaderItem: NSMenuItem!             // "↺ HAFTALIK HAK · ↺ FABLE HAKKI" when expanded
     var grantsToggle: ToggleRowView!
     var grantsToggleItem: NSMenuItem!
     var grantsExpanded: Bool {
@@ -920,6 +921,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         suggestionView.field.textColor = .systemOrange
         suggestionItem = NSMenuItem(); suggestionItem.view = suggestionView
         menu.addItem(suggestionItem)
+        grantHeaderItem = NSMenuItem(); grantHeaderItem.view = GrantHeaderView(width: menuWidth)
+        menu.addItem(grantHeaderItem)
         // account rows are inserted here by updateAccountsSection()
         staleView = NoteView(width: menuWidth, height: 28)
         staleView.field.textColor = .tertiaryLabelColor
@@ -1056,18 +1059,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 item.view = GrantDetailView(width: menuWidth)
                 return item
             }
-            var at = menu.index(of: suggestionItem) + 1
+            var at = menu.index(of: grantHeaderItem) + 1
             for (row, detail) in zip(accountRowItems, grantDetailItems) {
                 menu.insertItem(row, at: at); menu.insertItem(detail, at: at + 1); at += 2
             }
         }
         grantsToggle.update(expanded: grantsExpanded)
-        // The signed-in account's resets are shown above; nothing to expand without others.
-        grantsToggleItem.isHidden = !states.contains { $0.record.email != current }
+        grantsToggleItem.isHidden = empty
+        grantHeaderItem.isHidden = empty || !grantsExpanded
         for (item, s) in zip(grantDetailItems, states) {
             (item.view as? GrantDetailView)?.update(s)
-            // The signed-in account's resets are in the details block above — no repeat.
-            item.isHidden = !grantsExpanded || s.record.email == current
+            item.isHidden = !grantsExpanded
         }
         for (item, s) in zip(accountRowItems, states) {
             let row = item.view as? AccountRowView

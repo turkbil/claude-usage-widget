@@ -176,8 +176,10 @@
 "hide.delete" = "Löschen";
 "icon.ring" = "Ring mit Zahl";
 "icon.hint" = "Nächstes Konto in der Menüleiste zeigen (⏳ claude1)";
-"col.grants" = "BONUS";
 "grants.show" = "Freie Resets anzeigen";
 "grants.hide" = "Freie Resets ausblenden";
 "grants.none" = "keine freien Resets";
 "grants.unknown" = "unbekannt · erscheint nach Anmeldung";
+"grants.col_weekly" = "WOCHEN-RESETS";
+"grants.col_fable" = "FABLE-RESETS";
+"grants.unknown_short" = "unbekannt";

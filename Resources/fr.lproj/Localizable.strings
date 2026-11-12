@@ -176,8 +176,10 @@
 "hide.delete" = "Supprimer";
 "icon.ring" = "Anneau avec le nombre";
 "icon.hint" = "Afficher le compte suivant dans la barre des menus (⏳ claude1)";
-"col.grants" = "GRAT.";
 "grants.show" = "Afficher les réinit. offertes";
 "grants.hide" = "Masquer les réinit. offertes";
 "grants.none" = "aucune réinit. offerte";
 "grants.unknown" = "inconnu · visible après connexion";
+"grants.col_weekly" = "RÉINIT. HEBDO";
+"grants.col_fable" = "RÉINIT. FABLE";
+"grants.unknown_short" = "inconnu";

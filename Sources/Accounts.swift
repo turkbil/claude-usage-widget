@@ -241,16 +241,19 @@ struct AccountColumns {
     static let gap: CGFloat = 10
     /// Fixed slot for the "●" current-account mark, so every name starts at the same x.
     static let markW: CGFloat = 14
-    static let barW: CGFloat = 40, pctW: CGFloat = 46, grantW: CGFloat = 38, resetW: CGFloat = 70, planW: CGFloat = 52
-    let name, bar, pct, grant, reset, plan: (x: CGFloat, w: CGFloat)
+    static let barW: CGFloat = 64, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
+    let name, bar, pct, reset, plan: (x: CGFloat, w: CGFloat)
+    /// Expanded free-reset sub-row: weekly under bar+KALAN, Fable under SIFIRLAMA+AYLIK.
+    let weekly, fable: (x: CGFloat, w: CGFloat)
     init(width: CGFloat) {
         let x0 = Layout.hPad, end = width - Layout.hPad, g = Self.gap
         plan  = (end - Self.planW, Self.planW)
         reset = (plan.x - g - Self.resetW, Self.resetW)
-        grant = (reset.x - g - Self.grantW, Self.grantW)
-        pct   = (grant.x - g - Self.pctW, Self.pctW)
+        pct   = (reset.x - g - Self.pctW, Self.pctW)
         bar   = (pct.x - g - Self.barW, Self.barW)
         name  = (x0, bar.x - g - x0)
+        weekly = (bar.x, pct.x + pct.w - bar.x)
+        fable  = (reset.x, end - reset.x)
     }
 }
 
@@ -271,7 +274,6 @@ final class AccountsHeaderView: NSView {
         }
         title("section.accounts", c.name, right: false, strong: true)
         title("col.left", c.pct, right: true)
-        title("col.grants", c.grant, right: true)
         title("col.reset", c.reset, right: true)
         title("col.plan", c.plan, right: true)
     }
@@ -286,7 +288,6 @@ final class AccountRowView: NSView {
     private let left  = NSTextField(labelWithString: "")
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
-    private let grant = NSTextField(labelWithString: "")   // free resets on hand: ↺2 · 0 · —
     private let mark  = NSTextField(labelWithString: "")   // "●" on the signed-in account, empty otherwise
     private var isCurrentRow = false
     var onClick: (() -> Void)?
@@ -321,12 +322,7 @@ final class AccountRowView: NSView {
         plan.lineBreakMode = .byClipping
         plan.frame = NSRect(x: c.plan.x, y: 5, width: c.plan.w, height: 16)
 
-        grant.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
-        grant.alignment = .right
-        grant.lineBreakMode = .byClipping
-        grant.frame = NSRect(x: c.grant.x, y: 5, width: c.grant.w, height: 16)
-
-        [name, bar, left, grant, reset, plan].forEach(addSubview)
+        [name, bar, left, reset, plan].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -346,18 +342,6 @@ final class AccountRowView: NSView {
         name.attributedStringValue = NSAttributedString(string: shortName, attributes: [
             .font: nameFont, .paragraphStyle: para,
             .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
-
-        // Free resets: ↺N when known and >0, 0 when known none, — when never read.
-        // Not for the signed-in account: its resets are already in the details above.
-        if isCurrent {
-            grant.stringValue = ""
-        } else if r.grants == nil {
-            grant.stringValue = "—"; grant.textColor = .tertiaryLabelColor
-        } else if s.grantCount > 0 {
-            grant.stringValue = "↺\(s.grantCount)"; grant.textColor = NSColor(hex: "#d68c45")
-        } else {
-            grant.stringValue = "0"; grant.textColor = .tertiaryLabelColor
-        }
 
         // Monthly date: plain when it renews (or unknown), orange when the plan
         // is cancelled and really ends that day, faint once the date has passed.
@@ -525,29 +509,66 @@ final class ToggleRowView: NSView {
     override func mouseExited(with event: NSEvent)  { layer?.backgroundColor = nil }
 }
 
-/// The line under an account when free resets are expanded:
-/// "↺ 1 haftalık · son 11 Ara, 3 Fable · son 9 Mar" · "↺ hak yok" · "↺ bilinmiyor · giriş yapınca görünür"
-final class GrantDetailView: NSView {
-    private let field = NSTextField(labelWithString: "")
+/// Free resets of one kind: total on hand and the earliest expiry.
+func grantSummary(_ grants: [ResetGrant], kind: String) -> (count: Int, first: Date?) {
+    let g = grants.filter { $0.kind == kind }
+    return (g.reduce(0) { $0 + $1.left }, g.compactMap { $0.endsAt }.min())
+}
+
+/// Shared look of the two sub-row cells ("↺ 1 · son 11 Ara").
+private func grantCell() -> NSTextField {
+    let f = NSTextField(labelWithString: "")
+    f.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    f.lineBreakMode = .byTruncatingTail
+    return f
+}
+
+/// "↺ HAFTALIK HAK · ↺ FABLE HAKKI" — titles of the expanded sub-rows, on the same grid.
+final class GrantHeaderView: NSView {
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 18))
         autoresizingMask = [.width]
-        field.font = .systemFont(ofSize: 11)
-        field.lineBreakMode = .byTruncatingTail
-        // Starts where the account names start (after the "●" slot).
-        field.frame = NSRect(x: Layout.hPad + AccountColumns.markW, y: 2,
-                             width: width - Layout.hPad * 2 - AccountColumns.markW, height: 14)
-        field.autoresizingMask = [.width]
-        addSubview(field)
+        let c = AccountColumns(width: width)
+        for (key, col) in [("grants.col_weekly", c.weekly), ("grants.col_fable", c.fable)] {
+            let f = NSTextField(labelWithString: "↺ " + L(key))
+            f.font = .systemFont(ofSize: 10, weight: .heavy)
+            f.textColor = .tertiaryLabelColor
+            f.lineBreakMode = .byClipping
+            f.frame = NSRect(x: col.x, y: 2, width: col.w, height: 14)
+            addSubview(f)
+        }
     }
     required init?(coder: NSCoder) { fatalError() }
+}
+
+/// The table line under an account when free resets are expanded:
+/// weekly cell | Fable cell — "↺ 1 · son 11 Ara" · "0" · "bilinmiyor".
+final class GrantDetailView: NSView {
+    private let weekly = grantCell()
+    private let fable  = grantCell()
+    init(width: CGFloat) {
+        // Text hugs its account row; the extra space below separates it from the next account.
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 24))
+        autoresizingMask = [.width]
+        let c = AccountColumns(width: width)
+        weekly.frame = NSRect(x: c.weekly.x, y: 9, width: c.weekly.w, height: 14)
+        fable.frame  = NSRect(x: c.fable.x,  y: 9, width: c.fable.w,  height: 14)
+        addSubview(weekly); addSubview(fable)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
     func update(_ s: AccountState) {
-        if s.record.grants == nil {
-            field.stringValue = "↺ " + L("grants.unknown"); field.textColor = .tertiaryLabelColor
-        } else if s.grantsLeft.isEmpty {
-            field.stringValue = "↺ " + L("grants.none"); field.textColor = .tertiaryLabelColor
-        } else {
-            field.stringValue = "↺ " + grantText(s.grantsLeft); field.textColor = NSColor(hex: "#d68c45")
+        for (field, kind) in [(weekly, "weekly"), (fable, "fable")] {
+            guard s.record.grants != nil else {
+                field.stringValue = L("grants.unknown_short"); field.textColor = .tertiaryLabelColor; continue
+            }
+            let (n, first) = grantSummary(s.grantsLeft, kind: kind)
+            if n == 0 {
+                field.stringValue = "0"; field.textColor = .tertiaryLabelColor
+            } else {
+                field.stringValue = "↺ \(n)" + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
+                field.textColor = NSColor(hex: "#d68c45")
+            }
         }
         toolTip = s.grantsLeft.isEmpty ? nil : s.grantsLeft.map { g in
             L("grant." + g.kind, g.left) + (g.endsAt.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
