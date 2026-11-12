@@ -579,20 +579,50 @@ final class ForecastView: NSView {
     }
 }
 
+/// "Güncelleme: 01:04 ········ ⟳ Şimdi yenile" — clicking refreshes at once and
+/// keeps the menu open (the ⌘R menu item closes it).
 final class FooterView: NSView {
     let field = NSTextField(labelWithString: "")
+    private let action = NSTextField(labelWithString: "")
+    var onRefresh: (() -> Void)?
+    private(set) var busy = false
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Layout.footerHeight))
         autoresizingMask = [.width]
+        wantsLayer = true
         field.font = NSFont.systemFont(ofSize: 11)
         field.textColor = .tertiaryLabelColor
-        field.alignment = .center
-        field.frame = NSRect(x: Layout.hPad, y: 6, width: width - Layout.hPad*2, height: 14)
+        field.frame = NSRect(x: Layout.hPad, y: 6, width: width - Layout.hPad*2 - 130, height: 14)
         field.autoresizingMask = [.width]
+        field.lineBreakMode = .byTruncatingTail
         addSubview(field)
+        action.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        action.textColor = .secondaryLabelColor
+        action.alignment = .right
+        action.frame = NSRect(x: width - Layout.hPad - 128, y: 6, width: 128, height: 14)
+        action.autoresizingMask = [.minXMargin]
+        addSubview(action)
+        setBusy(false)
     }
     required init?(coder: NSCoder) { fatalError() }
     func update(_ s: String) { field.stringValue = s }
+    func setBusy(_ b: Bool) {
+        busy = b
+        action.stringValue = b ? L("footer.refreshing") : "⟳ " + L("footer.refresh")
+        action.textColor = b ? .tertiaryLabelColor : .secondaryLabelColor
+    }
+    override func mouseUp(with event: NSEvent) {
+        guard !busy else { return }
+        setBusy(true)
+        onRefresh?()
+    }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.12).cgColor }
+    override func mouseExited(with event: NSEvent)  { layer?.backgroundColor = nil }
 }
 
 // MARK: - App
@@ -795,6 +825,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let snap = try ClaudeAPI.fetchSnapshot()
                 DispatchQueue.main.async {
+                    self.footer?.setBusy(false)
                     self.lastSnapshot = snap
                     self.lastError    = nil
                     self.lastUpdate   = Date()
@@ -813,6 +844,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } catch {
                 DispatchQueue.main.async {
+                    self.footer?.setBusy(false)
                     self.lastError = error.localizedDescription
                     self.updateMenuLabels()
                     if self.lastSnapshot == nil, let button = self.statusItem.button {
@@ -947,6 +979,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         footer = FooterView(width: menuWidth)
+        footer.onRefresh = { [weak self] in self?.refresh() }
         let footerItem = NSMenuItem(); footerItem.view = footer
         menu.addItem(footerItem)
 

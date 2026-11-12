@@ -201,3 +201,5 @@
 "grants.col_weekly" = "WEEKLY RESETS";
 "grants.col_fable" = "FABLE RESETS";
 "grants.unknown_short" = "unknown";
+"footer.refresh" = "Refresh now";
+"footer.refreshing" = "Refreshing…";

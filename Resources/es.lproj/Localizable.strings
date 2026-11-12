@@ -183,3 +183,5 @@
 "grants.col_weekly" = "REINICIOS SEM.";
 "grants.col_fable" = "REINICIOS FABLE";
 "grants.unknown_short" = "desconocido";
+"footer.refresh" = "Actualizar ahora";
+"footer.refreshing" = "Actualizando…";

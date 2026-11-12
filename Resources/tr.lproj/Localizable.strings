@@ -201,3 +201,5 @@
 "grants.col_weekly" = "HAFTALIK HAK";
 "grants.col_fable" = "FABLE HAKKI";
 "grants.unknown_short" = "bilinmiyor";
+"footer.refresh" = "Şimdi yenile";
+"footer.refreshing" = "Yenileniyor…";

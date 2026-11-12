@@ -183,3 +183,5 @@
 "grants.col_weekly" = "RÉINIT. HEBDO";
 "grants.col_fable" = "RÉINIT. FABLE";
 "grants.unknown_short" = "inconnu";
+"footer.refresh" = "Actualiser";
+"footer.refreshing" = "Actualisation…";

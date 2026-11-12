@@ -183,3 +183,5 @@
 "grants.col_weekly" = "WOCHEN-RESETS";
 "grants.col_fable" = "FABLE-RESETS";
 "grants.unknown_short" = "unbekannt";
+"footer.refresh" = "Jetzt aktualisieren";
+"footer.refreshing" = "Wird aktualisiert…";
