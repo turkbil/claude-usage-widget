@@ -831,7 +831,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // resets within 48 h, use it first. (An arrow read as "signed in as claude1".)
         let current = lastSnapshot?.email?.lowercased()
         var hintTip: String? = nil
-        if let sug = AccountMath.suggestion(AccountStore.shared.states()), sug.record.email != current {
+        if PrefsStore.shared.prefs.menuBarHint == true,
+           let sug = AccountMath.suggestion(AccountStore.shared.states()), sug.record.email != current {
             let short = AccountStore.shared.shortName(sug.record.email)
             if let next = sug.nextReset, let left = sug.weeklyLeft {
                 hintTip = L("accounts.hint_other", short as NSString, Int(left.rounded()), formatRemaining(next) as NSString)

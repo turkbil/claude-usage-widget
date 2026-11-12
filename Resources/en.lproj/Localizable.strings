@@ -192,3 +192,5 @@
 "hide.cancel" = "Cancel";
 "hide.show" = "Show hidden accounts (%d)";
 "hide.delete" = "Delete";
+"icon.ring" = "Ring with the number inside";
+"icon.hint" = "Show the next account in the menu bar (⏳ claude1)";

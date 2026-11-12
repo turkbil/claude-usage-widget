@@ -192,3 +192,5 @@
 "hide.cancel" = "Vazgeç";
 "hide.show" = "Gizlenen hesapları göster (%d)";
 "hide.delete" = "Sil";
+"icon.ring" = "Halka içinde sayı";
+"icon.hint" = "Sıradaki hesabı menü çubuğunda göster (⏳ claude1)";

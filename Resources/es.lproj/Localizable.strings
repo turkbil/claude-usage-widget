@@ -174,3 +174,5 @@
 "hide.cancel" = "Cancelar";
 "hide.show" = "Mostrar cuentas ocultas (%d)";
 "hide.delete" = "Eliminar";
+"icon.ring" = "Anillo con el número";
+"icon.hint" = "Mostrar la siguiente cuenta en la barra de menús (⏳ claude1)";

@@ -9,6 +9,7 @@ enum MetricMode: String, Codable {
 
 enum IconType: String, Codable {
     case emoji, custom, donut, none
+    case ring      // weekly-% ring with the number inside (like the Chrome toolbar icon)
 }
 
 extension Notification.Name {
@@ -34,6 +35,9 @@ struct Preferences: Codable {
     // §02 Icon
     var iconType:  IconType = .emoji
     var iconValue: String   = "🤖"
+    // "⏳ claude1" next to the title when another account's quota is about to be lost.
+    // Optional so prefs saved by older versions still decode; nil = off.
+    var menuBarHint: Bool? = nil
 
     // §06 Refresh
     var pollIntervalSec: Int = 60

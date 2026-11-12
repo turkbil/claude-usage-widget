@@ -174,3 +174,5 @@
 "hide.cancel" = "Annuler";
 "hide.show" = "Afficher les comptes masqués (%d)";
 "hide.delete" = "Supprimer";
+"icon.ring" = "Anneau avec le nombre";
+"icon.hint" = "Afficher le compte suivant dans la barre des menus (⏳ claude1)";

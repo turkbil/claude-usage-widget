@@ -21,6 +21,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     private var hotkeyEnabledCheckbox: NSButton?
     private var browserCheckboxes: [NSButton] = []
     private var versionCheckCheckbox: NSButton?
+    private var menuBarHintCheckbox: NSButton?
     private var localApiCheckbox: NSButton?
 
     private init() {
@@ -194,12 +195,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         donut.identifier = NSUserInterfaceItemIdentifier("icon:donut")
         iconButtons.append(donut)
 
+        let ring = NSButton(radioButtonWithTitle: L("icon.ring"),
+                            target: self, action: #selector(pickIconRing))
+        ring.identifier = NSUserInterfaceItemIdentifier("icon:ring")
+        iconButtons.append(ring)
+
+        let hint = NSButton(checkboxWithTitle: L("icon.hint"),
+                            target: self, action: #selector(toggleMenuBarHint(_:)))
+        menuBarHintCheckbox = hint
+
         let none = NSButton(radioButtonWithTitle: L("icon.none"),
                             target: self, action: #selector(pickIconNone))
         none.identifier = NSUserInterfaceItemIdentifier("icon:none")
         iconButtons.append(none)
 
-        let body = NSStackView(views: [grid, customRow, donut, none])
+        let body = NSStackView(views: [grid, customRow, donut, ring, none, hint])
         body.orientation = .vertical
         body.alignment = .leading
         body.spacing = 10
@@ -383,6 +393,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
                 b.state = (p.iconType == .custom) ? .on : .off
             } else if id == "icon:donut" {
                 b.state = (p.iconType == .donut) ? .on : .off
+            } else if id == "icon:ring" {
+                b.state = (p.iconType == .ring) ? .on : .off
             } else if id == "icon:none" {
                 b.state = (p.iconType == .none) ? .on : .off
             }
@@ -408,6 +420,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             }
         }
         versionCheckCheckbox?.state = p.versionCheckEnabled ? .on : .off
+        menuBarHintCheckbox?.state = (p.menuBarHint == true) ? .on : .off
         localApiCheckbox?.state     = p.localApiEnabled     ? .on : .off
     }
 
@@ -440,6 +453,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         }
     }
     @objc func pickIconDonut() { PrefsStore.shared.update { $0.iconType = .donut; $0.iconValue = "" } }
+    @objc func pickIconRing() { PrefsStore.shared.update { $0.iconType = .ring; $0.iconValue = "" } }
+    @objc func toggleMenuBarHint(_ sender: NSButton) { PrefsStore.shared.update { $0.menuBarHint = (sender.state == .on) } }
     @objc func pickIconNone()  { PrefsStore.shared.update { $0.iconType = .none;  $0.iconValue = "" } }
 
     @objc func pickRefresh(_ sender: NSButton) {

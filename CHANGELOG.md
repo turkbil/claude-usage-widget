@@ -4,6 +4,16 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] — 2026-11-13
+
+### Added
+- **"Ring with the number inside"** menu-bar style (Settings → Icon): just a ring filled to
+  your weekly % with the number in it — which account it is shows in the popup.
+
+### Changed
+- The `⏳ claude1` next-account hint in the menu bar is now optional and **off by default**
+  (Settings → Icon → "Show the next account in the menu bar").
+
 ## [1.5.2] — 2026-11-13
 
 ### Changed

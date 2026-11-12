@@ -174,3 +174,5 @@
 "hide.cancel" = "Abbrechen";
 "hide.show" = "Ausgeblendete Konten anzeigen (%d)";
 "hide.delete" = "Löschen";
+"icon.ring" = "Ring mit Zahl";
+"icon.hint" = "Nächstes Konto in der Menüleiste zeigen (⏳ claude1)";

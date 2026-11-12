@@ -43,6 +43,11 @@ enum TitleRenderer {
         case .donut:
             let img = DonutImage.make(fill: s.weeklyUtilization / 100, color: NSColor(hex: prefs.weeklyPctColor))
             out.append(attachment(image: img))
+        case .ring:
+            let img = DonutImage.ringWithNumber(fill: s.weeklyUtilization / 100,
+                                                number: Int(s.weeklyUtilization.rounded()),
+                                                color: NSColor(hex: prefs.weeklyPctColor))
+            out.append(attachment(image: img, centerY: -6))
         case .none:
             break
         }
@@ -58,8 +63,9 @@ enum TitleRenderer {
             (prefs.fiveHourTimeMode, .timeOptional(s.fiveHourResetsAt, fiveTimeFill),    NSColor(hex: prefs.fiveHourTimeColor)),
         ]
 
-        for (mode, kind, color) in items {
+        for (i, (mode, kind, color)) in items.enumerated() {
             guard mode != .hidden else { continue }
+            if i == 0 && prefs.iconType == .ring { continue }   // the ring already shows weekly %
             guard let fragment = render(kind: kind, mode: mode, color: color) else { continue }
             if out.length > 0 { out.append(separator) }
             out.append(fragment)
@@ -113,11 +119,11 @@ enum TitleRenderer {
         }
     }
 
-    private static func attachment(image: NSImage) -> NSAttributedString {
+    private static func attachment(image: NSImage, centerY: CGFloat = -2) -> NSAttributedString {
         let a = NSTextAttachment()
         a.image = image
         // Vertically center against typical 13–14pt font.
-        a.bounds = NSRect(x: 0, y: -2, width: image.size.width, height: image.size.height)
+        a.bounds = NSRect(x: 0, y: centerY, width: image.size.width, height: image.size.height)
         return NSAttributedString(attachment: a)
     }
 
