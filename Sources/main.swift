@@ -608,7 +608,7 @@ final class FooterView: NSView {
     func update(_ s: String) { field.stringValue = s }
     func setBusy(_ b: Bool) {
         busy = b
-        action.stringValue = b ? L("footer.refreshing") : "⟳ " + L("footer.refresh")
+        action.stringValue = b ? L("footer.refreshing") : "↻ " + L("footer.refresh")
         action.textColor = b ? .tertiaryLabelColor : .secondaryLabelColor
     }
     override func mouseUp(with event: NSEvent) {
