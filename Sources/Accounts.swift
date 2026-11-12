@@ -115,14 +115,24 @@ final class AccountStore {
         save()
     }
 
-    /// Current account first, then the rest by soonest reset.
-    func states(currentEmail: String?, now: Date = Date()) -> [AccountState] {
-        let cur = currentEmail?.lowercased()
+    /// "Use next" order: accounts with quota left by soonest reset, then full ones,
+    /// then accounts with no data.
+    func states(now: Date = Date()) -> [AccountState] {
+        func group(_ s: AccountState) -> Int {
+            guard let l = s.weeklyLeft else { return 2 }
+            return l >= 5 ? 0 : 1
+        }
         return records.map { AccountMath.state($0, now: now) }.sorted { a, b in
-            if a.record.email == cur { return true }
-            if b.record.email == cur { return false }
+            if group(a) != group(b) { return group(a) < group(b) }
             return (a.nextReset ?? .distantFuture) < (b.nextReset ?? .distantFuture)
         }
+    }
+
+    /// "claude2" — the part before @, or the full address when two accounts share it.
+    func shortName(_ email: String) -> String {
+        let local = String(email.split(separator: "@").first ?? Substring(email))
+        let clash = records.filter { $0.email.split(separator: "@").first.map(String.init) == local }.count > 1
+        return clash ? email : local
     }
 
     private func load() {
@@ -174,83 +184,94 @@ func leftColor(_ left: Double) -> NSColor {
 
 // MARK: - Views
 
-/// Three-line row for one account in the "Accounts" section.
+/// One-line row: name · bar · % left · next reset. The rest lives in the tooltip.
 final class AccountRowView: NSView {
-    static let height: CGFloat = 54
-    private let email = NSTextField(labelWithString: "")
+    static let height: CGFloat = 24
+    private let name  = NSTextField(labelWithString: "")
+    private let bar   = ProgressBarView(frame: .zero)
     private let left  = NSTextField(labelWithString: "")
     private let reset = NSTextField(labelWithString: "")
-    private let scoped = NSTextField(labelWithString: "")
-    private let plan  = NSTextField(labelWithString: "")
-    private let age   = NSTextField(labelWithString: "")
 
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
         autoresizingMask = [.width]
-        let inner = width - Layout.hPad * 2
-        func place(_ f: NSTextField, y: CGFloat, size: CGFloat, weight: NSFont.Weight,
-                   color: NSColor, right: Bool, mono: Bool = false) {
-            f.font = mono ? .monospacedDigitSystemFont(ofSize: size, weight: weight)
-                          : .systemFont(ofSize: size, weight: weight)
-            f.textColor = color
-            f.lineBreakMode = .byTruncatingTail
-            f.alignment = right ? .right : .left
-            // The bottom line (plan · resets) is long and its right-hand age is short.
-            let rightW: CGFloat = y < 10 ? 58 : 110
-            f.frame = right ? NSRect(x: width - Layout.hPad - rightW, y: y, width: rightW, height: 15)
-                            : NSRect(x: Layout.hPad, y: y, width: inner - rightW - 4, height: 15)
-            f.autoresizingMask = right ? [.minXMargin] : [.width]
-            addSubview(f)
-        }
-        place(email,  y: 34, size: 12, weight: .semibold, color: .labelColor, right: false)
-        place(left,   y: 34, size: 12, weight: .semibold, color: .secondaryLabelColor, right: true, mono: true)
-        place(reset,  y: 19, size: 11, weight: .regular, color: .secondaryLabelColor, right: false, mono: true)
-        place(scoped, y: 19, size: 11, weight: .regular, color: .secondaryLabelColor, right: true, mono: true)
-        place(plan,   y: 4,  size: 10, weight: .regular, color: .tertiaryLabelColor, right: false)
-        place(age,    y: 4,  size: 10, weight: .regular, color: .tertiaryLabelColor, right: true)
+        let x0 = Layout.hPad, inner = width - Layout.hPad * 2
+        let nameW: CGFloat = 84, barW: CGFloat = 46, pctW: CGFloat = 42, gap: CGFloat = 6
+        let resetW = inner - nameW - barW - pctW - gap * 3
+
+        name.font = .systemFont(ofSize: 12, weight: .medium)
+        name.lineBreakMode = .byTruncatingTail
+        name.frame = NSRect(x: x0, y: 4, width: nameW, height: 16)
+
+        bar.frame = NSRect(x: x0 + nameW + gap, y: 9.5, width: barW, height: 5)
+
+        left.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        left.alignment = .right
+        left.frame = NSRect(x: x0 + nameW + gap + barW + gap, y: 4, width: pctW, height: 16)
+
+        reset.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        reset.alignment = .right
+        reset.lineBreakMode = .byTruncatingTail
+        reset.frame = NSRect(x: width - Layout.hPad - resetW, y: 5, width: resetW, height: 15)
+        reset.autoresizingMask = [.minXMargin]
+
+        [name, bar, left, reset].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    func update(_ s: AccountState, isCurrent: Bool) {
+    func update(_ s: AccountState, isCurrent: Bool, shortName: String) {
         let r = s.record
-        email.stringValue = (isCurrent ? "● " : "") + r.email
+        let lastWeek = (s.weeklyResetsLeft == 0) && (r.planEndsAt.map { $0 > Date() } ?? false)
+        name.stringValue = (isCurrent ? "● " : "") + shortName + (lastWeek ? " ⌛\u{FE0E}" : "")   // text-style glyph, not the colour emoji
+        // Signed-out accounts are dimmed: their numbers are from the last sign-in.
+        name.textColor = isCurrent ? .labelColor : .secondaryLabelColor
 
         if let l = s.weeklyLeft {
-            left.stringValue = L("accounts.left", Int(l.rounded())) + (s.rolled ? "*" : "")
+            bar.progress = l / 100
+            bar.fillColor = leftColor(l).withAlphaComponent(isCurrent ? 1 : 0.7)
+            left.stringValue = "%\(Int(l.rounded()))" + (s.rolled ? "*" : "")
             left.textColor = leftColor(l)
         } else {
+            bar.progress = 0
             left.stringValue = "—"
             left.textColor = .tertiaryLabelColor
         }
 
         if let n = s.nextReset {
-            reset.stringValue = "↻ " + weekdayTime(n) + " · " + formatRemaining(n)
+            // Within two days the countdown matters more than the weekday.
+            reset.stringValue = n.timeIntervalSinceNow <= AccountMath.hintWindow ? formatRemaining(n) : weekdayTime(n)
+            reset.textColor = .secondaryLabelColor
         } else {
-            reset.stringValue = L("accounts.no_data")
+            reset.stringValue = L("accounts.sign_in")
+            reset.textColor = .tertiaryLabelColor
         }
 
-        if let f = s.scopedLeft.first {
-            scoped.stringValue = L("accounts.scoped_left", f.name as NSString, Int(f.left.rounded()))
-        } else {
-            scoped.stringValue = ""
-        }
+        toolTip = Self.details(s, isCurrent: isCurrent)
+    }
 
-        var planBits: [String] = []
+    static func details(_ s: AccountState, isCurrent: Bool) -> String {
+        let r = s.record
+        var lines = [r.email]
+        if let n = s.nextReset {
+            let pct = s.weeklyLeft.map { "%\(Int($0.rounded()))" } ?? "—"
+            lines.append(L("tip.weekly", pct as NSString, weekdayTime(n) as NSString, formatRemaining(n) as NSString))
+        }
+        for f in s.scopedLeft { lines.append(L("tip.scoped", f.name as NSString, Int(f.left.rounded()))) }
         if let end = r.planEndsAt {
-            planBits.append(L("accounts.plan_until", shortDay(end) as NSString))
-            if end < Date() {
-                planBits.append(L("accounts.plan_passed"))
-            } else if let w = s.weeklyResetsLeft {
-                if let f = s.scopedResetsLeft, f != w, let name = s.scopedLeft.first?.name {
-                    planBits.append(L("accounts.resets_split", w, name as NSString, f))
-                } else {
-                    planBits.append(L("accounts.resets", w))
-                }
+            var bits = [L("accounts.plan_until", shortDay(end) as NSString)]
+            if end < Date() { bits.append(L("accounts.plan_passed")) }
+            else if let w = s.weeklyResetsLeft {
+                if let f = s.scopedResetsLeft, f != w, let nm = s.scopedLeft.first?.name {
+                    bits.append(L("accounts.resets_split", w, nm as NSString, f))
+                } else { bits.append(L("accounts.resets", w)) }
             }
+            lines.append(bits.joined(separator: " · "))
         }
-        plan.stringValue = planBits.joined(separator: " · ")
-        age.stringValue = isCurrent ? L("accounts.now") : ageText(r.seenAt)
-        toolTip = r.source == "note" ? L("accounts.tip_note") : nil
+        lines.append(L("tip.seen", (isCurrent ? L("accounts.now") : ageText(r.seenAt)) as NSString))
+        if s.rolled { lines.append(L("tip.rolled")) }
+        if r.source == "note" { lines.append(L("accounts.tip_note")) }
+        else if !isCurrent { lines.append(L("tip.refresh")) }
+        return lines.joined(separator: "\n")
     }
 }
 

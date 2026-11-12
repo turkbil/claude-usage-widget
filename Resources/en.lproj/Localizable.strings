@@ -156,6 +156,13 @@
 "accounts.resets" = "%d resets left";
 "accounts.resets_split" = "%d weekly · %@ %d resets left";
 "accounts.tip_note" = "Entered by hand. Replaced by real data when you sign in to this account.";
-"accounts.stale_note" = "Other accounts show the values from their last sign-in and may be out of date; sign in to an account to update it. * should have reset since.";
-"accounts.hint_current" = "%d%% of this account is unused and resets in %@ — use it before it is lost.";
+"accounts.stale_note" = "Dimmed = last sign-in data · * should have reset · ⌛︎ last week";
+"accounts.hint_current" = "%d%% unused here, resets in %@.";
 "accounts.hint_other" = "Use %@ first: %d%% unused, resets in %@.";
+"accounts.columns" = "left · reset";
+"accounts.sign_in" = "sign in";
+"tip.weekly" = "Weekly: %@ left · ↻ %@ (%@)";
+"tip.scoped" = "%@: %d%% left";
+"tip.seen" = "Last data: %@";
+"tip.rolled" = "* Should have reset since then.";
+"tip.refresh" = "Sign in to this account to update it.";

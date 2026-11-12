@@ -138,6 +138,13 @@
 "accounts.resets" = "%d Resets bis Ende";
 "accounts.resets_split" = "%d wöchentlich · %@ %d";
 "accounts.tip_note" = "Von Hand eingetragen. Wird beim Anmelden durch echte Daten ersetzt.";
-"accounts.stale_note" = "Andere Konten zeigen die Werte der letzten Anmeldung und sind evtl. veraltet; zum Aktualisieren dort anmelden. * inzwischen zurückgesetzt.";
-"accounts.hint_current" = "%d%% dieses Kontos sind ungenutzt und werden in %@ zurückgesetzt.";
-"accounts.hint_other" = "Zuerst %@ nutzen: %d%% frei, Reset in %@.";
+"accounts.stale_note" = "Blass = Daten der letzten Anmeldung · * zurückgesetzt · ⌛︎ letzte Woche";
+"accounts.hint_current" = "%d%% hier ungenutzt, Reset in %@.";
+"accounts.hint_other" = "Zuerst %@: %d%% frei, Reset in %@.";
+"accounts.columns" = "frei · Reset";
+"accounts.sign_in" = "anmelden";
+"tip.weekly" = "Woche: %@ frei · ↻ %@ (%@)";
+"tip.scoped" = "%@: %d%% frei";
+"tip.seen" = "Letzte Daten: %@";
+"tip.rolled" = "* Inzwischen zurückgesetzt.";
+"tip.refresh" = "Zum Aktualisieren bei diesem Konto anmelden.";

@@ -848,7 +848,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         suggestionItem = NSMenuItem(); suggestionItem.view = suggestionView
         menu.addItem(suggestionItem)
         // account rows are inserted here by updateAccountsSection()
-        staleView = NoteView(width: menuWidth, height: 56)
+        staleView = NoteView(width: menuWidth, height: 22)
         staleView.field.textColor = .tertiaryLabelColor
         staleView.field.font = .systemFont(ofSize: 10)
         staleView.field.stringValue = L("accounts.stale_note")
@@ -907,18 +907,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func updateAccountsSection() {
         guard let menu = statusItem.menu, accountsAnchor != nil else { return }
         let current = lastSnapshot?.email?.lowercased()
-        let states = AccountStore.shared.states(currentEmail: current)
+        let store = AccountStore.shared
+        let states = store.states()
 
         let empty = states.isEmpty
         accountsAnchor.isHidden = empty
         staleItem.isHidden = empty || states.count < 2
-        accountsHeader.update(L("section.accounts"), trailing: empty ? "" : L("accounts.count", states.count))
+        accountsHeader.update(L("section.accounts"), trailing: empty ? "" : L("accounts.columns"))
 
         if let s = AccountMath.suggestion(states), let next = s.nextReset, let left = s.weeklyLeft {
             let pct = Int(left.rounded())
             let text = s.record.email == current
                 ? L("accounts.hint_current", pct, formatRemaining(next) as NSString)
-                : L("accounts.hint_other", s.record.email as NSString, pct, formatRemaining(next) as NSString)
+                : L("accounts.hint_other", store.shortName(s.record.email) as NSString, pct, formatRemaining(next) as NSString)
             suggestionView.field.stringValue = "⏳ " + text
             suggestionItem.isHidden = false
         } else {
@@ -937,7 +938,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             for item in accountRowItems { menu.insertItem(item, at: at); at += 1 }
         }
         for (item, s) in zip(accountRowItems, states) {
-            (item.view as? AccountRowView)?.update(s, isCurrent: s.record.email == current)
+            (item.view as? AccountRowView)?.update(s, isCurrent: s.record.email == current,
+                                                   shortName: store.shortName(s.record.email))
+            item.toolTip = (item.view as? AccountRowView)?.toolTip
         }
     }
 

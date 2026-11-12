@@ -138,6 +138,13 @@
 "accounts.resets" = "%d réinitialisations avant la fin";
 "accounts.resets_split" = "%d hebdo · %@ %d";
 "accounts.tip_note" = "Saisi à la main. Remplacé par les vraies données à la connexion.";
-"accounts.stale_note" = "Les autres comptes affichent leur dernière connexion et peuvent être périmés ; connectez-vous pour actualiser. * a dû être réinitialisé depuis.";
-"accounts.hint_current" = "%d%% de ce compte inutilisés, réinitialisés dans %@ ; profitez-en.";
-"accounts.hint_other" = "Utilisez d’abord %@ : %d%% libres, réinitialisation dans %@.";
+"accounts.stale_note" = "Grisé = dernière connexion · * réinitialisé depuis · ⌛︎ dernière semaine";
+"accounts.hint_current" = "%d%% inutilisés ici, réinitialisés dans %@.";
+"accounts.hint_other" = "Utilisez d’abord %@ : %d%% libres, réinit. dans %@.";
+"accounts.columns" = "restant · réinit.";
+"accounts.sign_in" = "se connecter";
+"tip.weekly" = "Hebdo : %@ restant · ↻ %@ (%@)";
+"tip.scoped" = "%@ : %d%% restant";
+"tip.seen" = "Dernières données : %@";
+"tip.rolled" = "* A dû être réinitialisé depuis.";
+"tip.refresh" = "Connectez-vous à ce compte pour actualiser.";
