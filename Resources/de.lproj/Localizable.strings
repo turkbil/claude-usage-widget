@@ -149,6 +149,8 @@
 "tip.rolled" = "* Inzwischen zurückgesetzt.";
 "tip.refresh" = "Zum Aktualisieren bei diesem Konto anmelden.";
 "label.scoped_cap" = "%@ · max. %d%%";
-"detail.reset" = "↻ Reset %@";
-"detail.daily" = "~%d%% pro Tag";
-"detail.breakdown" = "Diese Woche: %@";
+"detail.reset" = "Reset";
+"detail.daily" = "Pro Tag";
+"detail.breakdown" = "Nutzung";
+"detail.plan" = "Abo endet";
+"detail.last_week" = "letzte Woche";

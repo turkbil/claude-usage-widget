@@ -311,3 +311,43 @@ final class NoteView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 }
+
+/// One label–value pair in the current-account details block.
+struct DetailRow {
+    let label: String
+    let value: String
+    var color: NSColor = .labelColor
+}
+
+/// "Sıfırlama ········ Pzt 16:00" rows: label on the left, value on the right,
+/// the same alignment as the usage rows above.
+final class DetailsView: NSView {
+    static let rowHeight: CGFloat = 19
+    init(width: CGFloat) {
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.rowHeight))
+        autoresizingMask = [.width]
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    func update(_ rows: [DetailRow]) {
+        subviews.forEach { $0.removeFromSuperview() }
+        let h = CGFloat(rows.count) * Self.rowHeight + 8
+        frame.size.height = h
+        let w = bounds.width, inner = w - Layout.hPad * 2
+        for (i, r) in rows.enumerated() {
+            let y = h - 4 - CGFloat(i + 1) * Self.rowHeight + 2
+            let label = NSTextField(labelWithString: r.label)
+            label.font = .systemFont(ofSize: 11)
+            label.textColor = .secondaryLabelColor
+            label.frame = NSRect(x: Layout.hPad, y: y, width: 110, height: 15)
+            let value = NSTextField(labelWithString: r.value)
+            value.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+            value.textColor = r.color
+            value.alignment = .right
+            value.lineBreakMode = .byTruncatingTail
+            value.frame = NSRect(x: Layout.hPad + 112, y: y, width: inner - 112, height: 15)
+            value.autoresizingMask = [.width]
+            addSubview(label); addSubview(value)
+        }
+    }
+}

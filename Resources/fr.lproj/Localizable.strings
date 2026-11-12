@@ -149,6 +149,8 @@
 "tip.rolled" = "* A dû être réinitialisé depuis.";
 "tip.refresh" = "Connectez-vous à ce compte pour actualiser.";
 "label.scoped_cap" = "%@ · max %d %%";
-"detail.reset" = "↻ réinit. %@";
-"detail.daily" = "~%d %% par jour";
-"detail.breakdown" = "Cette semaine : %@";
+"detail.reset" = "Réinit.";
+"detail.daily" = "Par jour";
+"detail.breakdown" = "Usage";
+"detail.plan" = "Fin abo";
+"detail.last_week" = "dernière semaine";

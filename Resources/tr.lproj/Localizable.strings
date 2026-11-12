@@ -167,6 +167,8 @@
 "tip.rolled" = "* O tarihten beri sıfırlanmış olmalı.";
 "tip.refresh" = "Güncellemek için bu hesaba giriş yapın.";
 "label.scoped_cap" = "%@ · en çok %%%d";
-"detail.reset" = "↻ %@ sıfırlanır";
-"detail.daily" = "Günde ~%%%d kullanabilirsiniz";
-"detail.breakdown" = "Bu hafta: %@";
+"detail.reset" = "Sıfırlama";
+"detail.daily" = "Günlük pay";
+"detail.breakdown" = "Kullanım";
+"detail.plan" = "Abonelik bitişi";
+"detail.last_week" = "son hafta";

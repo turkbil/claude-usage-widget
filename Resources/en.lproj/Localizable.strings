@@ -167,6 +167,8 @@
 "tip.rolled" = "* Should have reset since then.";
 "tip.refresh" = "Sign in to this account to update it.";
 "label.scoped_cap" = "%@ · max %d%%";
-"detail.reset" = "↻ resets %@";
-"detail.daily" = "~%d%% a day to last the week";
-"detail.breakdown" = "This week: %@";
+"detail.reset" = "Resets";
+"detail.daily" = "Daily budget";
+"detail.breakdown" = "Usage";
+"detail.plan" = "Plan ends";
+"detail.last_week" = "last week";

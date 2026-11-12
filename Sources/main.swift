@@ -594,7 +594,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // NSMenu, so the item itself must be hidden.
     var sonnetItem: NSMenuItem!
     var forecastItem: NSMenuItem!
-    var detailsView: NoteView!
+    var detailsView: DetailsView!
     var detailsItem: NSMenuItem!
     var fiveHourHeaderItem: NSMenuItem!
     var fiveHourItem: NSMenuItem!
@@ -836,7 +836,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(forecastItem)
 
         // Current account details: reset · plan end · daily budget · where the week went
-        detailsView = NoteView(width: menuWidth, height: 62)
+        detailsView = DetailsView(width: menuWidth)
         detailsItem = NSMenuItem(); detailsItem.view = detailsView
         menu.addItem(detailsItem)
 
@@ -972,27 +972,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// "↻ Pzt 16:00 sıfırlanır · Abonelik 13 Kas · 0 sıfırlama kaldı" · daily budget · breakdown
-    func currentDetailLines(_ s: UsageSnapshot) -> [String] {
-        var lines: [String] = []
-        lines.append(L("detail.reset", weekdayTime(s.weeklyResetsAt) as NSString))
+    /// Label–value rows for the signed-in account: reset · plan end · daily budget · usage.
+    func currentDetailRows(_ s: UsageSnapshot) -> [DetailRow] {
+        var rows = [DetailRow(label: L("detail.reset"), value: weekdayTime(s.weeklyResetsAt))]
         if let end = s.planEndsAt {
-            var plan = [L("accounts.plan_until", shortDay(end) as NSString)]
-            if let n = AccountMath.resetsBefore(end, next: s.weeklyResetsAt) { plan.append(L("accounts.resets", n)) }
-            lines.append(plan.joined(separator: " · "))
+            let n = AccountMath.resetsBefore(end, next: s.weeklyResetsAt)
+            if end < Date() {
+                rows.append(DetailRow(label: L("detail.plan"), value: shortDay(end) + " · " + L("accounts.plan_passed"), color: .tertiaryLabelColor))
+            } else if n == 0 {
+                rows.append(DetailRow(label: L("detail.plan"), value: shortDay(end) + " · " + L("detail.last_week"), color: .systemOrange))
+            } else {
+                rows.append(DetailRow(label: L("detail.plan"), value: shortDay(end) + (n.map { " · " + L("accounts.resets", $0) } ?? "")))
+            }
         }
 
         // Daily budget: what is left spread over the days until the reset.
         let days = s.weeklyResetsAt.timeIntervalSinceNow / 86400
         if days > 0.25 {
             let left = max(0, 100 - s.weeklyUtilization)
-            lines.append(L("detail.daily", Int((left / max(1, days)).rounded())))
+            rows.append(DetailRow(label: L("detail.daily"), value: "~%\(Int((left / max(1, days)).rounded()))"))
         }
 
         let used = s.breakdown.filter { $0.pct >= 1 }.sorted { $0.pct > $1.pct }
         if !used.isEmpty {
-            lines.append(L("detail.breakdown", used.map { "\($0.name) %\(Int($0.pct.rounded()))" }.joined(separator: " · ") as NSString))
+            rows.append(DetailRow(label: L("detail.breakdown"),
+                                  value: used.map { "\($0.name) %\(Int($0.pct.rounded()))" }.joined(separator: " · ")))
         }
-        return lines
+        return rows
     }
 
     func updateMenuLabels() {
@@ -1011,10 +1017,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let s = lastSnapshot {
             weeklyHeader.update(L("section.weekly"), trailing: remainingWithSuffix(s.weeklyResetsAt))
             allModelsRow.update(label: L("label.all_models"), percent: s.weeklyUtilization)
-            let lines = currentDetailLines(s)
-            detailsView.field.stringValue = lines.joined(separator: "\n")
-            detailsView.frame.size.height = CGFloat(lines.count) * 15 + 8
-            detailsItem.isHidden = lines.isEmpty
+            let rows = currentDetailRows(s)
+            detailsView.update(rows)
+            detailsItem.isHidden = rows.isEmpty
 
             if let f = s.scopedLimits.first {
                 let label = s.scopedShare.map { L("label.scoped_cap", f.name as NSString, Int($0.rounded())) } ?? f.name
