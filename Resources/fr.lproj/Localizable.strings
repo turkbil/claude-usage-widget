@@ -138,7 +138,7 @@
 "accounts.resets" = "%d réinitialisations avant la fin";
 "accounts.resets_split" = "%d hebdo · %@ %d";
 "accounts.tip_note" = "Saisi à la main. Remplacé par les vraies données à la connexion.";
-"accounts.stale_note" = "Grisé = dernière connexion · * réinitialisé · orange = dernière semaine";
+"accounts.stale_note" = "Grisé = ancien · * réinitialisé · ↺ = réinit. offerte · orange = dernière semaine";
 "accounts.hint_current" = "%d%% inutilisés ici, réinitialisés dans %@.";
 "accounts.hint_other" = "Utilisez d’abord %@ : %d%% libres, réinit. dans %@.";
 "accounts.columns" = "restant · réinit. · fin abo";
@@ -157,3 +157,12 @@
 "col.left" = "RESTANT";
 "col.reset" = "RÉINIT.";
 "col.plan" = "FIN";
+"detail.grants" = "Réinit. offertes";
+"grant.weekly" = "%d hebdo";
+"grant.fable" = "%d Fable";
+"grant.session" = "%d session";
+"grant.other" = "%d réinit.";
+"grant.until" = "jusqu’au %@";
+"tip.click" = "Clic : copie l’e-mail et ouvre la connexion.";
+"notification.plan_end" = "L’abonnement de %@ se termine le %@.";
+"notification.grant_end" = "%@ a une réinitialisation inutilisée : %@.";

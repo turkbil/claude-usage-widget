@@ -138,7 +138,7 @@
 "accounts.resets" = "%d reinicios antes del fin";
 "accounts.resets_split" = "%d semanales · %@ %d";
 "accounts.tip_note" = "Introducido a mano. Se reemplaza al iniciar sesión en esta cuenta.";
-"accounts.stale_note" = "Atenuado = último inicio · * ya reiniciado · naranja = última semana";
+"accounts.stale_note" = "Atenuado = antiguo · * reiniciado · ↺ = reinicio gratis · naranja = última semana";
 "accounts.hint_current" = "%d%% sin usar aquí, se reinicia en %@.";
 "accounts.hint_other" = "Usa primero %@: %d%% libre, se reinicia en %@.";
 "accounts.columns" = "libre · reinicio · fin plan";
@@ -157,3 +157,12 @@
 "col.left" = "LIBRE";
 "col.reset" = "REINICIO";
 "col.plan" = "FIN";
+"detail.grants" = "Reinicios gratis";
+"grant.weekly" = "%d semanal";
+"grant.fable" = "%d Fable";
+"grant.session" = "%d sesión";
+"grant.other" = "%d reinicio";
+"grant.until" = "hasta %@";
+"tip.click" = "Clic: copia el correo y abre el inicio de sesión.";
+"notification.plan_end" = "El plan de %@ termina el %@.";
+"notification.grant_end" = "%@ tiene un reinicio sin usar: %@.";

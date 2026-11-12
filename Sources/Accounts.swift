@@ -7,6 +7,15 @@ struct ScopedLimit: Codable {
     let resetsAt: Date?
 }
 
+/// A free limit reset claude.ai hands out (usage?cedar_ember=1 → grants[]),
+/// e.g. "One full limit reset (November 2026)". Read-only: the widget never uses one.
+struct ResetGrant: Codable {
+    let kind: String        // "weekly" | "fable" | "session" | "other"
+    let left: Int
+    let total: Int
+    let endsAt: Date?
+}
+
 /// Last-seen state of one claude.ai account. The widget can only read the account
 /// that is currently signed in to the browser, so every other account keeps the
 /// values from the last time it was signed in (shown as "may be out of date").
@@ -19,6 +28,7 @@ struct AccountRecord: Codable {
     var planEndsAt: Date?           // subscription_details.plan_ending_at
     var seenAt: Date
     var source: String              // "live" (read by the widget) | "note" (entered by hand)
+    var grants: [ResetGrant]? = nil // free resets on hand (nil in records from before v1.5)
 }
 
 /// What a record means *now*: weekly windows that have passed since the record
@@ -31,6 +41,8 @@ struct AccountState {
     let rolled: Bool                // a reset happened since the record was taken
     let weeklyResetsLeft: Int?      // weekly resets before the plan ends
     let scopedResetsLeft: Int?      // same for the first scoped (Fable) limit
+    let grantsLeft: [ResetGrant]    // unused, unexpired free resets
+    var grantCount: Int { grantsLeft.reduce(0) { $0 + $1.left } }
 }
 
 enum AccountMath {
@@ -74,7 +86,8 @@ enum AccountMath {
             record: r, nextReset: next, weeklyLeft: weeklyLeft,
             scopedLeft: scopedLeft, rolled: rolled,
             weeklyResetsLeft: resetsBefore(r.planEndsAt, next: next),
-            scopedResetsLeft: resetsBefore(r.planEndsAt, next: scopedNext)
+            scopedResetsLeft: resetsBefore(r.planEndsAt, next: scopedNext),
+            grantsLeft: (r.grants ?? []).filter { $0.left > 0 && ($0.endsAt.map { $0 > now } ?? true) }
         )
     }
 
@@ -108,7 +121,7 @@ final class AccountStore {
             email: email, plan: snap.planLabel,
             weeklyPct: snap.weeklyUtilization, weeklyResetsAt: snap.weeklyResetsAt,
             scoped: snap.scopedLimits, planEndsAt: snap.planEndsAt ?? records.first { $0.email == email }?.planEndsAt,
-            seenAt: snap.fetchedAt, source: "live"
+            seenAt: snap.fetchedAt, source: "live", grants: snap.grants
         )
         if let i = records.firstIndex(where: { $0.email == email }) { records[i] = rec }
         else { records.append(rec) }
@@ -175,6 +188,14 @@ func ageText(_ d: Date, now: Date = Date()) -> String {
     return L("accounts.ago", L("time.days_short", Int(s / 86400)) as NSString)
 }
 
+/// "1 haftalık · son 11 Ara" for each kind of free reset on hand.
+func grantText(_ grants: [ResetGrant]) -> String {
+    grants.map { g in
+        let kind = L("grant." + g.kind, g.left)
+        return g.endsAt.map { kind + " · " + L("grant.until", shortDay($0) as NSString) } ?? kind
+    }.joined(separator: ", ")
+}
+
 func leftColor(_ left: Double) -> NSColor {
     if left <= 10 { return .systemRed }
     if left <= 25 { return .systemOrange }
@@ -231,6 +252,8 @@ final class AccountRowView: NSView {
     private let left  = NSTextField(labelWithString: "")
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
+    var onClick: (() -> Void)?
+    private var isCurrentRow = false
 
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
@@ -264,11 +287,21 @@ final class AccountRowView: NSView {
     func update(_ s: AccountState, isCurrent: Bool, shortName: String) {
         let r = s.record
         let lastWeek = (s.weeklyResetsLeft == 0) && (r.planEndsAt.map { $0 > Date() } ?? false)
-        name.stringValue = (isCurrent ? "● " : "") + shortName
+        isCurrentRow = isCurrent
         // The signed-in account gets a soft band so it stands out in the list.
         wantsLayer = true
-        layer?.backgroundColor = isCurrent ? NSColor.labelColor.withAlphaComponent(0.07).cgColor : nil
-        name.font = .systemFont(ofSize: 12, weight: isCurrent ? .bold : .medium)
+        setBand(hover: false)
+        let nameFont = NSFont.systemFont(ofSize: 12, weight: isCurrent ? .bold : .medium)
+        name.font = nameFont
+        // Signed-out accounts are dimmed: their numbers are from the last sign-in.
+        let label = NSMutableAttributedString(string: (isCurrent ? "● " : "") + shortName, attributes: [
+            .font: nameFont, .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
+        if s.grantCount > 0 {   // ↺1 = free resets on hand
+            label.append(NSAttributedString(string: " ↺\(s.grantCount)", attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
+                .foregroundColor: NSColor(hex: "#d68c45")]))
+        }
+        name.attributedStringValue = label
 
         // Monthly date: orange when the plan ends before the next weekly reset
         // (last week of the subscription), faint when the date has passed.
@@ -279,8 +312,6 @@ final class AccountRowView: NSView {
             plan.stringValue = "—"
             plan.textColor = .tertiaryLabelColor
         }
-        // Signed-out accounts are dimmed: their numbers are from the last sign-in.
-        name.textColor = isCurrent ? .labelColor : .secondaryLabelColor
 
         if let l = s.weeklyLeft {
             bar.progress = l / 100
@@ -305,6 +336,26 @@ final class AccountRowView: NSView {
         toolTip = Self.details(s, isCurrent: isCurrent)
     }
 
+    // Click a signed-out account → onClick (copy e-mail + open the claude.ai sign-in page).
+    override func mouseUp(with event: NSEvent) {
+        guard let action = onClick else { return }
+        enclosingMenuItem?.menu?.cancelTracking()
+        action()
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { if onClick != nil { setBand(hover: true) } }
+    override func mouseExited(with event: NSEvent)  { setBand(hover: false) }
+
+    private func setBand(hover: Bool) {
+        let a: CGFloat = hover ? 0.12 : (isCurrentRow ? 0.07 : 0)
+        layer?.backgroundColor = a > 0 ? NSColor.labelColor.withAlphaComponent(a).cgColor : nil
+    }
+
     static func details(_ s: AccountState, isCurrent: Bool) -> String {
         let r = s.record
         var lines = [r.email]
@@ -313,6 +364,7 @@ final class AccountRowView: NSView {
             lines.append(L("tip.weekly", pct as NSString, weekdayTime(n) as NSString, formatRemaining(n) as NSString))
         }
         for f in s.scopedLeft { lines.append(L("tip.scoped", f.name as NSString, Int(f.left.rounded()))) }
+        if !s.grantsLeft.isEmpty { lines.append(L("detail.grants") + ": " + grantText(s.grantsLeft)) }
         if let end = r.planEndsAt {
             var bits = [L("accounts.plan_until", shortDay(end) as NSString)]
             if end < Date() { bits.append(L("accounts.plan_passed")) }
@@ -327,6 +379,7 @@ final class AccountRowView: NSView {
         if s.rolled { lines.append(L("tip.rolled")) }
         if r.source == "note" { lines.append(L("accounts.tip_note")) }
         else if !isCurrent { lines.append(L("tip.refresh")) }
+        if !isCurrent { lines.append(L("tip.click")) }
         return lines.joined(separator: "\n")
     }
 }

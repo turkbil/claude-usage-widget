@@ -156,7 +156,7 @@
 "accounts.resets" = "%d resets left";
 "accounts.resets_split" = "%d weekly · %@ %d resets left";
 "accounts.tip_note" = "Entered by hand. Replaced by real data when you sign in to this account.";
-"accounts.stale_note" = "Dimmed = old data · * should have reset · orange = last week";
+"accounts.stale_note" = "Dimmed = old data · * reset since · ↺ = free reset · orange = last week";
 "accounts.hint_current" = "%d%% unused here · resets in %@";
 "accounts.hint_other" = "Use %@ first · %d%% unused · resets in %@";
 "accounts.columns" = "left · reset · plan ends";
@@ -175,3 +175,12 @@
 "col.left" = "LEFT";
 "col.reset" = "RESETS";
 "col.plan" = "ENDS";
+"detail.grants" = "Free resets";
+"grant.weekly" = "%d weekly";
+"grant.fable" = "%d Fable";
+"grant.session" = "%d session";
+"grant.other" = "%d reset";
+"grant.until" = "until %@";
+"tip.click" = "Click: copies the e-mail and opens the claude.ai sign-in page.";
+"notification.plan_end" = "The %@ plan ends on %@ — use the quota left.";
+"notification.grant_end" = "%@ has an unused free reset: %@.";

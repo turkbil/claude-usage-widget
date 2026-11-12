@@ -138,7 +138,7 @@
 "accounts.resets" = "%d Resets bis Ende";
 "accounts.resets_split" = "%d wöchentlich · %@ %d";
 "accounts.tip_note" = "Von Hand eingetragen. Wird beim Anmelden durch echte Daten ersetzt.";
-"accounts.stale_note" = "Blass = letzte Anmeldung · * zurückgesetzt · orange = letzte Woche";
+"accounts.stale_note" = "Blass = alt · * zurückgesetzt · ↺ = freier Reset · orange = letzte Woche";
 "accounts.hint_current" = "%d%% hier ungenutzt, Reset in %@.";
 "accounts.hint_other" = "Zuerst %@: %d%% frei, Reset in %@.";
 "accounts.columns" = "frei · Reset · Abo-Ende";
@@ -157,3 +157,12 @@
 "col.left" = "FREI";
 "col.reset" = "RESET";
 "col.plan" = "ENDE";
+"detail.grants" = "Freie Resets";
+"grant.weekly" = "%d wöchentlich";
+"grant.fable" = "%d Fable";
+"grant.session" = "%d Sitzung";
+"grant.other" = "%d Reset";
+"grant.until" = "bis %@";
+"tip.click" = "Klick: kopiert die E-Mail und öffnet die Anmeldung.";
+"notification.plan_end" = "Das Abo von %@ endet am %@.";
+"notification.grant_end" = "%@ hat einen ungenutzten Reset: %@.";

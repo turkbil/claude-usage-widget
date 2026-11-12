@@ -46,6 +46,7 @@ struct UsageSnapshot {
     var planEndsAt: Date? = nil               // end of the paid month
     var breakdown: [(name: String, pct: Double)] = []   // where the week went: Claude Code, Chat, …
     var scopedShare: Double? = nil            // max % of the weekly limit the first scoped model may use
+    var grants: [ResetGrant] = []             // free limit resets on hand
 }
 
 /// "default_claude_max_20x" → "Max 20x"
@@ -74,7 +75,8 @@ struct ClaudeAPI {
         let planLabel:   String? = try? fetchPlanLabel(cookie: cookie, orgId: orgId)
         let planEndsAt:  Date?   = try? fetchPlanEnd(cookie: cookie, orgId: orgId)
 
-        let json = try getJSON("/api/organizations/\(orgId)/usage", cookie: cookie)
+        // cedar_ember=1 adds the free-reset grants (what claude.ai/settings/usage shows). Read-only.
+        let json = try getJSON("/api/organizations/\(orgId)/usage?cedar_ember=1&skip_spend=1", cookie: cookie)
 
         guard let dict = json as? [String: Any],
               let seven = dict["seven_day"] as? [String: Any],
@@ -116,6 +118,17 @@ struct ClaudeAPI {
                       let p = (row["percent"] as? NSNumber)?.doubleValue else { return nil }
                 return (n, p)
             }
+        var grants: [ResetGrant] = []
+        for g in ((dict["cedar_ember"] as? [String: Any])?["grants"] as? [[String: Any]]) ?? [] where (g["paused"] as? Bool) != true {
+            let clears = g["clears"] as? [String] ?? []
+            let kind = (g["gives_back_weekly"] as? Bool) == true ? "fable"
+                     : clears.contains("seven_day") ? "weekly"
+                     : clears.contains("five_hour") ? "session" : "other"
+            grants.append(ResetGrant(kind: kind,
+                                     left: (g["resets_left"] as? NSNumber)?.intValue ?? 0,
+                                     total: (g["resets_total"] as? NSNumber)?.intValue ?? 0,
+                                     endsAt: (g["ends_at"] as? String).flatMap(parseISO)))
+        }
         let share = ((dict["weekly_scoped_shares"] as? [[String: Any]])?.first?["allowance_percent_of_weekly"] as? NSNumber)?.doubleValue
 
         return UsageSnapshot(
@@ -131,7 +144,8 @@ struct ClaudeAPI {
             scopedLimits:        scoped,
             planEndsAt:          planEndsAt,
             breakdown:           breakdown,
-            scopedShare:         share
+            scopedShare:         share,
+            grants:              grants
         )
     }
 
@@ -800,7 +814,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             prefs: PrefsStore.shared.prefs,
             error: (lastSnapshot == nil && lastError != nil)
         )
-        button.attributedTitle = attr
+        // "→ claude1": another account's unused quota resets within 48 h.
+        let current = lastSnapshot?.email?.lowercased()
+        if let sug = AccountMath.suggestion(AccountStore.shared.states()), sug.record.email != current {
+            let title = NSMutableAttributedString(attributedString: attr)
+            title.append(NSAttributedString(string: " → " + AccountStore.shared.shortName(sug.record.email),
+                                            attributes: [.foregroundColor: NSColor.systemOrange,
+                                                         .font: NSFont.menuBarFont(ofSize: 0)]))
+            button.attributedTitle = title
+        } else {
+            button.attributedTitle = attr
+        }
         if let s = lastSnapshot {
             let pct = Int(s.weeklyUtilization.rounded())
             button.toolTip = L("tooltip", pct, formatRemaining(s.weeklyResetsAt) as NSString)
@@ -935,6 +959,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         accountsAnchor.isHidden = empty
         staleItem.isHidden = empty || states.count < 2
 
+        NotificationManager.shared.evaluateAccounts(states, suggestion: AccountMath.suggestion(states),
+                                                    shortName: store.shortName)
         if let s = AccountMath.suggestion(states), let next = s.nextReset, let left = s.weeklyLeft {
             let pct = Int(left.rounded())
             let text = s.record.email == current
@@ -958,8 +984,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             for item in accountRowItems { menu.insertItem(item, at: at); at += 1 }
         }
         for (item, s) in zip(accountRowItems, states) {
-            (item.view as? AccountRowView)?.update(s, isCurrent: s.record.email == current,
-                                                   shortName: store.shortName(s.record.email))
+            let row = item.view as? AccountRowView
+            row?.update(s, isCurrent: s.record.email == current, shortName: store.shortName(s.record.email))
+            let email = s.record.email
+            row?.onClick = s.record.email == current ? nil : {
+                // We can't switch accounts for the user; copy the address and open sign-in.
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(email, forType: .string)
+                NSWorkspace.shared.open(URL(string: "https://claude.ai/login")!)
+            }
             item.toolTip = (item.view as? AccountRowView)?.toolTip
         }
     }
@@ -984,6 +1017,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 rows.append(DetailRow(label: L("detail.plan"), value: shortDay(end) + (n.map { " · " + L("accounts.resets", $0) } ?? "")))
             }
+        }
+
+        let onHand = s.grants.filter { $0.left > 0 && ($0.endsAt.map { $0 > Date() } ?? true) }
+        if !onHand.isEmpty {
+            rows.append(DetailRow(label: L("detail.grants"), value: grantText(onHand), color: NSColor(hex: "#d68c45")))
         }
 
         // Daily budget: what is left spread over the days until the reset.
