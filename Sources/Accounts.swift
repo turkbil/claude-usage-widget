@@ -162,12 +162,9 @@ final class AccountStore {
         }
     }
 
-    /// "claude2" — the part before @, or the full address when two accounts share it.
-    func shortName(_ email: String) -> String {
-        let local = String(email.split(separator: "@").first ?? Substring(email))
-        let clash = records.filter { $0.email.split(separator: "@").first.map(String.init) == local }.count > 1
-        return clash ? email : local
-    }
+    /// Accounts are shown by their full e-mail: several share the part before @
+    /// but live on different domains.
+    func shortName(_ email: String) -> String { email }
 
     private func load() {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: Self.path)) else { return }
@@ -241,7 +238,7 @@ struct AccountColumns {
     static let gap: CGFloat = 10
     /// Fixed slot for the "●" current-account mark, so every name starts at the same x.
     static let markW: CGFloat = 14
-    static let barW: CGFloat = 64, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
+    static let barW: CGFloat = 48, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
     let name, bar, pct, reset, plan: (x: CGFloat, w: CGFloat)
     /// Expanded free-reset sub-row: weekly under bar+KALAN, Fable under SIFIRLAMA+AYLIK.
     let weekly, fable: (x: CGFloat, w: CGFloat)
