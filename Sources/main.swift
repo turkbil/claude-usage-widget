@@ -208,18 +208,43 @@ struct ClaudeAPI {
 
     /// API credits of the account signed in at the developer console (platform.claude.com).
     /// Read-only GETs; the claim endpoint is never called. Returns nil when no console session.
-    static func fetchConsoleCredits() -> (email: String, total: Double, credits: [APICredit])? {
+    /// Today's API spend of one org: the console's cost report (a read-only query sent as POST),
+    /// daily bucket of today (UTC days), list price after discounts, i.e. what the credits paid.
+    static func todaySpend(org: String, cookie: String) -> Double? {
+        let f = DateFormatter(); f.timeZone = TimeZone(identifier: "UTC"); f.dateFormat = "yyyy-MM-dd"
+        let today = f.string(from: Date()), tomorrow = f.string(from: Date().addingTimeInterval(86400))
+        guard let url = URL(string: "https://platform.claude.com/api/organizations/\(org)/cost/query_bucketed") else { return nil }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("sessionKey=\(cookie)", forHTTPHeaderField: "Cookie")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Mozilla/5.0 ClaudeUsageWidget", forHTTPHeaderField: "User-Agent")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "starting_on": today + "T00:00:00.000Z", "ending_before": tomorrow + "T00:00:00.000Z",
+            "granularity": "daily", "group_by": [String](), "top_n": 20])
+        let sem = DispatchSemaphore(value: 0); var data: Data?; var code = 0
+        URLSession.shared.dataTask(with: req) { d, r, _ in data = d; code = (r as? HTTPURLResponse)?.statusCode ?? 0; sem.signal() }.resume()
+        _ = sem.wait(timeout: .now() + 20)
+        guard code == 200, let d = data, let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+              let totals = j["totals"] as? [String: Any] else { return nil }
+        return (totals["discounted_usd_total"] as? NSNumber)?.doubleValue
+            ?? (totals["list_usd_total"] as? NSNumber)?.doubleValue
+    }
+
+    static func fetchConsoleCredits() -> (email: String, total: Double, credits: [APICredit], today: Double?)? {
         let base = "https://platform.claude.com"
         guard let cookie = try? BrowserCookieReader.sessionKey(prefs: PrefsStore.shared.prefs, host: "platform.claude.com"),
               let acct = (try? getJSON("/api/account", cookie: cookie, base: base)) as? [String: Any],
               let email = acct["email_address"] as? String,
               let orgs = (try? getJSON("/api/organizations", cookie: cookie, base: base)) as? [[String: Any]] else { return nil }
-        var total = 0.0, credits: [APICredit] = [], anyRead = false
+        var total = 0.0, credits: [APICredit] = [], anyRead = false, today: Double? = nil
         for o in orgs {
             guard let id = o["uuid"] as? String,
                   let c = (try? getJSON("/api/organizations/\(id)/prepaid/credits", cookie: cookie, base: base)) as? [String: Any]
             else { continue }   // chat-only orgs answer 403
             anyRead = true
+            if let t = todaySpend(org: id, cookie: cookie) { today = (today ?? 0) + t }
             total += ((c["amount"] as? NSNumber)?.doubleValue ?? 0) / 100
             for t in (c["promo_tranches"] as? [[String: Any]]) ?? [] {
                 let rem = ((t["remaining_amount_minor_units"] as? NSNumber)?.doubleValue ?? 0) / 100
@@ -230,7 +255,7 @@ struct ClaudeAPI {
                                          expiresAt: (t["expires_at"] as? String).flatMap(parseISO)))
             }
         }
-        return anyRead ? (email, total, credits) : (email, 0, [])
+        return anyRead ? (email, total, credits, today) : (email, 0, [], nil)
     }
 
     static func getJSON(_ path: String, cookie: String, base: String = "https://claude.ai") throws -> Any {
@@ -863,7 +888,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.global(qos: .utility).async { [weak self] in
                 guard let c = ClaudeAPI.fetchConsoleCredits() else { return }
                 DispatchQueue.main.async {
-                    AccountStore.shared.upsertAPI(email: c.email, total: c.total, credits: c.credits, at: Date())
+                    AccountStore.shared.upsertAPI(email: c.email, total: c.total, credits: c.credits, today: c.today, at: Date())
                     self?.updateAccountsSection()
                 }
             }
@@ -1148,6 +1173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         grantsToggle.update(expanded: grantsExpanded)
         grantsToggleItem.isHidden = empty
         grantHeaderItem.isHidden = empty || !grantsExpanded
+        (grantHeaderItem.view as? GrantHeaderView)?.update()
         for (item, s) in zip(grantDetailItems, states) {
             (item.view as? GrantDetailView)?.update(s, isCurrent: s.record.email == current)
             item.isHidden = !grantsExpanded

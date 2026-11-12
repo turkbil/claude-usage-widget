@@ -43,6 +43,8 @@ struct AccountRecord: Codable {
     var apiTotal: Double? = nil     // developer-console credit balance, USD (nil = never read)
     var apiCredits: [APICredit]? = nil
     var apiSeenAt: Date? = nil      // console data is read only for the account signed in there
+    var apiToday: Double? = nil     // API spend on apiTodayKey (UTC day), USD
+    var apiTodayKey: String? = nil  // "2026-11-13" — the spend counts only on that day
 }
 
 /// What a record means *now*: weekly windows that have passed since the record
@@ -160,7 +162,9 @@ final class AccountStore {
             grantsSeenAt: snap.grants != nil ? snap.fetchedAt : records.first { $0.email == email }?.grantsSeenAt,
             apiTotal: records.first { $0.email == email }?.apiTotal,
             apiCredits: records.first { $0.email == email }?.apiCredits,
-            apiSeenAt: records.first { $0.email == email }?.apiSeenAt
+            apiSeenAt: records.first { $0.email == email }?.apiSeenAt,
+            apiToday: records.first { $0.email == email }?.apiToday,
+            apiTodayKey: records.first { $0.email == email }?.apiTodayKey
         )
         if let i = records.firstIndex(where: { $0.email == email }) { records[i] = rec }
         else { records.append(rec) }
@@ -169,17 +173,23 @@ final class AccountStore {
 
     /// Console credits of the account signed in at platform.claude.com (may be a
     /// different account than the one signed in at claude.ai).
-    func upsertAPI(email: String, total: Double, credits: [APICredit], at: Date) {
+    func upsertAPI(email: String, total: Double, credits: [APICredit], today: Double?, at: Date) {
         let e = email.lowercased()
-        if let i = records.firstIndex(where: { $0.email == e }) {
-            records[i].apiTotal = total; records[i].apiCredits = credits; records[i].apiSeenAt = at
-        } else {
-            var r = AccountRecord(email: e, plan: nil, weeklyPct: nil, weeklyResetsAt: nil, scoped: [],
-                                  planEndsAt: nil, seenAt: at, source: "live")
-            r.apiTotal = total; r.apiCredits = credits; r.apiSeenAt = at
-            records.append(r)
+        if records.firstIndex(where: { $0.email == e }) == nil {
+            records.append(AccountRecord(email: e, plan: nil, weeklyPct: nil, weeklyResetsAt: nil, scoped: [],
+                                         planEndsAt: nil, seenAt: at, source: "live"))
         }
+        let i = records.firstIndex(where: { $0.email == e })!
+        records[i].apiTotal = total; records[i].apiCredits = credits; records[i].apiSeenAt = at
+        if let t = today { records[i].apiToday = t; records[i].apiTodayKey = utcDayKey(at) }
         save()
+    }
+
+    /// Today's API spend summed over every account whose spend was read today.
+    func apiTodayTotal(now: Date = Date()) -> (sum: Double, accounts: Int) {
+        let key = utcDayKey(now)
+        let rs = records.filter { $0.apiTodayKey == key && !hidden.contains($0.email) }
+        return (rs.reduce(0) { $0 + ($1.apiToday ?? 0) }, rs.count)
     }
 
     /// "Use next" order: accounts with quota left by soonest reset, then full ones,
@@ -223,6 +233,12 @@ func weekdayTime(_ d: Date) -> String {
     f.setLocalizedDateFormatFromTemplate("EEE HH:mm")
     // resets_at can be …:59:59.9 — round to the nearest minute so it reads 14:00, not 13:59.
     return f.string(from: Date(timeIntervalSince1970: (d.timeIntervalSince1970 / 60).rounded() * 60))
+}
+
+/// "2026-11-13" — the console's cost report uses UTC days.
+func utcDayKey(_ d: Date) -> String {
+    let f = DateFormatter(); f.timeZone = TimeZone(identifier: "UTC"); f.dateFormat = "yyyy-MM-dd"
+    return f.string(from: d)
 }
 
 /// "$4,42" in the user's locale.
@@ -572,6 +588,11 @@ private func grantCell() -> NSTextField {
 
 /// "↺ HAFTALIK HAK · ↺ FABLE HAKKI" — titles of the expanded sub-rows, on the same grid.
 final class GrantHeaderView: NSView {
+    private let total = NSTextField(labelWithString: "")   // "BUGÜN API $1,20 · 2 hesap"
+    func update() {
+        let t = AccountStore.shared.apiTodayTotal()
+        total.stringValue = t.accounts == 0 ? "" : L("api.today_total", money(t.sum) as NSString, t.accounts)
+    }
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 18))
         autoresizingMask = [.width]
@@ -584,6 +605,13 @@ final class GrantHeaderView: NSView {
             f.frame = NSRect(x: col.x, y: 2, width: col.w, height: 14)
             addSubview(f)
         }
+        // Today's API spend of all accounts, on the left under the HESAPLAR title.
+        total.font = .systemFont(ofSize: 10, weight: .heavy)
+        total.textColor = NSColor(hex: "#d68c45")
+        total.lineBreakMode = .byTruncatingTail
+        total.frame = NSRect(x: c.name.x + AccountColumns.markW, y: 2, width: c.name.w - AccountColumns.markW, height: 14)
+        addSubview(total)
+        update()
     }
     required init?(coder: NSCoder) { fatalError() }
 }
@@ -610,6 +638,12 @@ final class GrantDetailView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    /// " · bugün $1,20" — only when the spend was read today.
+    private func todayText(_ r: AccountRecord) -> String {
+        guard r.apiTodayKey == utcDayKey(Date()), let t = r.apiToday else { return "" }
+        return " · " + L("api.today", money(t) as NSString)
+    }
+
     func update(_ s: AccountState, isCurrent: Bool) {
         // Last read: these numbers are from this moment, not live (except the signed-in account).
         // Last read, separately: resets come from claude.ai, credits from the console.
@@ -626,10 +660,11 @@ final class GrantDetailView: NSView {
             let first = cr.compactMap { $0.expiresAt }.min()
             api.stringValue = L("api.credit", money(left) as NSString, money(granted) as NSString)
                 + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
+                + todayText(r)
             let soon = first.map { $0.timeIntervalSinceNow < 3 * 86400 } ?? false
             api.textColor = soon ? .systemRed : NSColor(hex: "#d68c45")
         } else {
-            api.stringValue = L("api.balance", money(r.apiTotal ?? 0) as NSString)
+            api.stringValue = L("api.balance", money(r.apiTotal ?? 0) as NSString) + todayText(r)
             api.textColor = (r.apiTotal ?? 0) > 0 ? .labelColor : .tertiaryLabelColor
         }
         for (field, kind) in [(weekly, "weekly"), (fable, "fable")] {

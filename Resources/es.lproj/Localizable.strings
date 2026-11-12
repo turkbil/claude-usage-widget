@@ -192,3 +192,5 @@
 "api.credit" = "API %@ / %@ otorgado";
 "api.balance" = "API %@";
 "notification.api_end" = "%@: %@ de crédito API vence el %@.";
+"api.today" = "hoy %@";
+"api.today_total" = "HOY API %@ · %d CUENTAS";

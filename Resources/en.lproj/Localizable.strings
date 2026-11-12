@@ -210,3 +210,5 @@
 "api.credit" = "API %@ / %@ granted";
 "api.balance" = "API %@";
 "notification.api_end" = "%@ has %@ of API credit expiring on %@.";
+"api.today" = "today %@";
+"api.today_total" = "TODAY API %@ · %d ACCOUNTS";

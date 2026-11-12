@@ -210,3 +210,5 @@
 "api.credit" = "API %@ / %@ hibe";
 "api.balance" = "API %@";
 "notification.api_end" = "%@ hesabının %@ API kredisi %@ tarihinde bitiyor.";
+"api.today" = "bugün %@";
+"api.today_total" = "BUGÜN API %@ · %d HESAP";

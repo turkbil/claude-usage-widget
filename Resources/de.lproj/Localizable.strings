@@ -192,3 +192,5 @@
 "api.credit" = "API %@ / %@ gewährt";
 "api.balance" = "API %@";
 "notification.api_end" = "%@: %@ API-Guthaben verfällt am %@.";
+"api.today" = "heute %@";
+"api.today_total" = "HEUTE API %@ · %d KONTEN";
