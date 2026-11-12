@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- 16–32 px: ince halka, kocaman kalın «7» (yazı değil şekil: dönüştürücü kalın yazıyı tanımıyor) (araç çubuğundaki sayı gibi) -->
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2724"/><stop offset="1" stop-color="#171514"/></linearGradient></defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="44" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="14"/>
+  <path d="M64 20 A44 44 0 1 1 22.6 79" fill="none" stroke="#e3965a" stroke-width="14" stroke-linecap="round"/>
+  <path d="M46 10 L70 20 L52 36 Z" fill="#f0b27a" stroke="#f0b27a" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M44 42 H84 L58 94" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

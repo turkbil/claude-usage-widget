@@ -123,6 +123,13 @@ final class AccountStore {
         set { UserDefaults.standard.set(Array(newValue).sorted(), forKey: Self.hiddenKey) }
     }
     func hide(_ email: String) { hidden.insert(email.lowercased()) }
+    /// Deletes the stored record. Unlike hide, the account comes back on its next sign-in.
+    func remove(_ email: String) {
+        let e = email.lowercased()
+        records.removeAll { $0.email == e }
+        hidden.remove(e)
+        save()
+    }
     func unhideAll() { hidden = [] }
 
     private init() { load() }

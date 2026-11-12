@@ -964,16 +964,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateAccountsSection()
     }
 
-    /// "Remove claude3 from the list?" — hides it (reversible from the menu).
+    /// "What to do with claude3?" — Hide (kept, can be shown again) or Delete (record
+    /// removed; it returns only when that account signs in again). The user chooses.
     func confirmHide(_ email: String) {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = L("hide.title", AccountStore.shared.shortName(email) as NSString)
         alert.informativeText = L("hide.body", email as NSString)
-        alert.addButton(withTitle: L("hide.confirm"))
-        alert.addButton(withTitle: L("hide.cancel"))
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        AccountStore.shared.hide(email)
+        alert.addButton(withTitle: L("hide.confirm"))       // Gizle
+        let del = alert.addButton(withTitle: L("hide.delete"))  // Sil
+        del.hasDestructiveAction = true
+        alert.addButton(withTitle: L("hide.cancel"))        // Vazgeç
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:  AccountStore.shared.hide(email)
+        case .alertSecondButtonReturn: AccountStore.shared.remove(email)
+        default: return
+        }
         updateAccountsSection()
         updateTitle()
     }

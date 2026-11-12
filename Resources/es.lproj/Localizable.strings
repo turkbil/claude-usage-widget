@@ -167,9 +167,10 @@
 "notification.grant_end" = "%@ tiene un reinicio sin usar: %@.";
 "detail.renews" = "Renueva";
 "tip.plan_ends" = "El plan termina %@";
-"tip.remove" = "Clic: quitar de la lista";
-"hide.title" = "¿Quitar %@ de la lista?";
-"hide.body" = "%@ dejará de aparecer en el panel y en los avisos, aunque vuelvas a iniciar sesión. Recupérala con «Mostrar cuentas ocultas».";
-"hide.confirm" = "Quitar";
+"tip.remove" = "Clic: ocultar o eliminar";
+"hide.title" = "¿Qué hacer con %@?";
+"hide.body" = "Ocultar: %@ desaparece de la lista, los avisos y las notificaciones; los datos se conservan y «Mostrar cuentas ocultas» la recupera.\n\nEliminar: se borra el registro; vuelve a crearse al iniciar sesión de nuevo.";
+"hide.confirm" = "Ocultar";
 "hide.cancel" = "Cancelar";
 "hide.show" = "Mostrar cuentas ocultas (%d)";
+"hide.delete" = "Eliminar";

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Haftalık döngü: halka (kullanım) + ok (sıfırlama) + 7 (gün) -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2724"/><stop offset="1" stop-color="#171514"/></linearGradient>
+    <linearGradient id="em" x1="0" y1="0" x2="1" y2="1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0b27a"/><stop offset="1" stop-color="#cf7d3a"/></linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#ffffff" stroke-opacity=".14" stroke-width="11"/>
+  <path d="M64 24 A40 40 0 1 1 26.4 77.7" fill="none" stroke="#e3965a" stroke-width="11" stroke-linecap="round"/>
+  <path d="M49 16 L68 24 L54 37 Z" fill="#f0b27a" stroke="#f0b27a" stroke-width="5" stroke-linejoin="round"/>
+  <!-- büyük, kalın rakam: küçük boyda da okunsun -->
+  <path d="M48 46 H80 L60 88" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

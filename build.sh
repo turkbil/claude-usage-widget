@@ -28,6 +28,7 @@ echo "→ Copying localization bundles…"
 for lproj in Resources/*.lproj; do
   cp -R "$lproj" "$RES_DIR/"
 done
+cp Resources/AppIcon/AppIcon.icns "$RES_DIR/AppIcon.icns"   # app icon (source: Resources/AppIcon/*.svg)
 
 cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -40,6 +41,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleExecutable</key><string>ClaudeUsageWidget</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSUIElement</key><true/>
   <key>LSMinimumSystemVersion</key><string>12.0</string>

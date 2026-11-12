@@ -4,6 +4,15 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-11-13
+
+### Added
+- **Hide or delete an account.** Click an account row and choose:
+  *Hide* — it disappears from the list, hints and notifications (data kept; "Show hidden
+  accounts (N)" brings it back), or *Delete* — the record is removed and is added again
+  only when you sign in to that account.
+- **App icon:** a weekly cycle — ring, reset arrow and a bold 7.
+
 ## [1.5.0] — 2026-11-12
 
 ### Added
