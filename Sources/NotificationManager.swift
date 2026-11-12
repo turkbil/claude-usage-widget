@@ -71,7 +71,8 @@ final class NotificationManager {
         }
         for s in states {
             let name = shortName(s.record.email)
-            if let end = s.record.planEndsAt, end > now, end.timeIntervalSince(now) <= soon {
+            // Only a cancelled plan really ends; a renewing one just charges again.
+            if s.record.planRenews == false, let end = s.record.planEndsAt, end > now, end.timeIntervalSince(now) <= soon {
                 once("plan.\(s.record.email).\(Int(end.timeIntervalSince1970))",
                      L("notification.plan_end", name as NSString, shortDay(end) as NSString))
             }

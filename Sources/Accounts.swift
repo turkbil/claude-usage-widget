@@ -26,6 +26,7 @@ struct AccountRecord: Codable {
     var weeklyResetsAt: Date?
     var scoped: [ScopedLimit]
     var planEndsAt: Date?           // subscription_details.plan_ending_at
+    var planRenews: Bool? = nil     // true = renews that day · false = cancelled · nil = unknown
     var seenAt: Date
     var source: String              // "live" (read by the widget) | "note" (entered by hand)
     var grants: [ResetGrant]? = nil // free resets on hand (nil in records from before v1.5)
@@ -85,8 +86,9 @@ enum AccountMath {
         return AccountState(
             record: r, nextReset: next, weeklyLeft: weeklyLeft,
             scopedLeft: scopedLeft, rolled: rolled,
-            weeklyResetsLeft: resetsBefore(r.planEndsAt, next: next),
-            scopedResetsLeft: resetsBefore(r.planEndsAt, next: scopedNext),
+            // Counting resets "before the end" only means something for a plan that ends.
+            weeklyResetsLeft: r.planRenews == true ? nil : resetsBefore(r.planEndsAt, next: next),
+            scopedResetsLeft: r.planRenews == true ? nil : resetsBefore(r.planEndsAt, next: scopedNext),
             grantsLeft: (r.grants ?? []).filter { $0.left > 0 && ($0.endsAt.map { $0 > now } ?? true) }
         )
     }
@@ -121,6 +123,7 @@ final class AccountStore {
             email: email, plan: snap.planLabel,
             weeklyPct: snap.weeklyUtilization, weeklyResetsAt: snap.weeklyResetsAt,
             scoped: snap.scopedLimits, planEndsAt: snap.planEndsAt ?? records.first { $0.email == email }?.planEndsAt,
+            planRenews: snap.planRenews ?? records.first { $0.email == email }?.planRenews,
             seenAt: snap.fetchedAt, source: "live", grants: snap.grants
         )
         if let i = records.firstIndex(where: { $0.email == email }) { records[i] = rec }
@@ -285,7 +288,7 @@ final class AccountRowView: NSView {
 
     func update(_ s: AccountState, isCurrent: Bool, shortName: String) {
         let r = s.record
-        let lastWeek = (s.weeklyResetsLeft == 0) && (r.planEndsAt.map { $0 > Date() } ?? false)
+        let ending = r.planRenews == false && (r.planEndsAt.map { $0 > Date() } ?? false)
         isCurrentRow = isCurrent
         // The signed-in account gets a soft band so it stands out in the list.
         wantsLayer = true
@@ -302,11 +305,11 @@ final class AccountRowView: NSView {
         }
         name.attributedStringValue = label
 
-        // Monthly date: orange when the plan ends before the next weekly reset
-        // (last week of the subscription), faint when the date has passed.
+        // Monthly date: plain when it renews (or unknown), orange when the plan
+        // is cancelled and really ends that day, faint once the date has passed.
         if let end = r.planEndsAt {
             plan.stringValue = shortDay(end)
-            plan.textColor = end < Date() ? .tertiaryLabelColor : (lastWeek ? .systemOrange : .secondaryLabelColor)
+            plan.textColor = end < Date() ? .tertiaryLabelColor : (ending ? .systemOrange : .secondaryLabelColor)
         } else {
             plan.stringValue = "—"
             plan.textColor = .tertiaryLabelColor
@@ -348,8 +351,10 @@ final class AccountRowView: NSView {
         }
         for f in s.scopedLeft { lines.append(L("tip.scoped", f.name as NSString, Int(f.left.rounded()))) }
         if !s.grantsLeft.isEmpty { lines.append(L("detail.grants") + ": " + grantText(s.grantsLeft)) }
-        if let end = r.planEndsAt {
-            var bits = [L("accounts.plan_until", shortDay(end) as NSString)]
+        if let end = r.planEndsAt, r.planRenews == true {
+            lines.append(L("detail.renews") + " " + shortDay(end))
+        } else if let end = r.planEndsAt {
+            var bits = [L(r.planRenews == false ? "tip.plan_ends" : "accounts.plan_until", shortDay(end) as NSString)]
             if end < Date() { bits.append(L("accounts.plan_passed")) }
             else if let w = s.weeklyResetsLeft {
                 if let f = s.scopedResetsLeft, f != w, let nm = s.scopedLeft.first?.name {

@@ -44,6 +44,7 @@ struct UsageSnapshot {
     var email: String? = nil
     var scopedLimits: [ScopedLimit] = []      // per-model weekly limits, e.g. Fable
     var planEndsAt: Date? = nil               // end of the paid month
+    var planRenews: Bool? = nil               // true = auto-renews that day, false = cancelled/ending
     var breakdown: [(name: String, pct: Double)] = []   // where the week went: Claude Code, Chat, …
     var scopedShare: Double? = nil            // max % of the weekly limit the first scoped model may use
     var grants: [ResetGrant] = []             // free limit resets on hand
@@ -73,7 +74,8 @@ struct ClaudeAPI {
 
         let account = try? fetchAccount(cookie: cookie)
         let planLabel:   String? = try? fetchPlanLabel(cookie: cookie, orgId: orgId)
-        let planEndsAt:  Date?   = try? fetchPlanEnd(cookie: cookie, orgId: orgId)
+        let plan = try? fetchPlanEnd(cookie: cookie, orgId: orgId)
+        let planEndsAt = plan?.date
 
         // cedar_ember=1 adds the free-reset grants (what claude.ai/settings/usage shows). Read-only.
         let json = try getJSON("/api/organizations/\(orgId)/usage?cedar_ember=1&skip_spend=1", cookie: cookie)
@@ -143,6 +145,7 @@ struct ClaudeAPI {
             email:               account?.email,
             scopedLimits:        scoped,
             planEndsAt:          planEndsAt,
+            planRenews:          plan?.renews,
             breakdown:           breakdown,
             scopedShare:         share,
             grants:              grants
@@ -157,11 +160,18 @@ struct ClaudeAPI {
         return (name, email)
     }
 
-    /// End of the current paid month. Only this date is read from the billing reply.
-    static func fetchPlanEnd(cookie: String, orgId: String) throws -> Date? {
+    /// End of the current paid month and whether it renews then. Only these two are
+    /// read from the billing reply (no card or payment fields).
+    static func fetchPlanEnd(cookie: String, orgId: String) throws -> (date: Date?, renews: Bool) {
         let json = try getJSON("/api/organizations/\(orgId)/subscription_details", cookie: cookie)
-        guard let dict = json as? [String: Any] else { return nil }
-        return ((dict["plan_ending_at"] as? String) ?? (dict["next_charge_at"] as? String)).flatMap(parseISO)
+        guard let dict = json as? [String: Any] else { return (nil, false) }
+        let date = ((dict["plan_ending_at"] as? String) ?? (dict["next_charge_at"] as? String)).flatMap(parseISO)
+        // Active with a next charge and nothing scheduled to stop it → it renews.
+        let renews = (dict["status"] as? String) == "active"
+            && dict["next_charge_at"] is String
+            && !(dict["scheduled_downgrade"].map { !($0 is NSNull) } ?? false)
+            && !(dict["manual_pause_scheduled_at"].map { !($0 is NSNull) } ?? false)
+        return (date, renews)
     }
 
     static func fetchPlanLabel(cookie: String, orgId: String) throws -> String {
@@ -732,7 +742,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let n = d["name"] as? String, let p = d["pct"] as? Double else { return nil }
                 return ScopedLimit(name: n, pct: p, resetsAt: (d["resetsAt"] as? String).flatMap(ClaudeAPI.parseISO))
             },
-            planEndsAt:          (dict["planEndsAt"] as? String).flatMap(ClaudeAPI.parseISO)
+            planEndsAt:          (dict["planEndsAt"] as? String).flatMap(ClaudeAPI.parseISO),
+            planRenews:          dict["planRenews"] as? Bool
         )
         updateTitle()
         updateMenuLabels()
@@ -756,6 +767,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let p = s.planLabel           { dict["planLabel"]           = p }
         if let e = s.email               { dict["email"]               = e }
         if let d = s.planEndsAt          { dict["planEndsAt"]          = iso.string(from: d) }
+        if let r = s.planRenews          { dict["planRenews"]          = r }
         dict["scoped"] = s.scopedLimits.map { l -> [String: Any] in
             var d: [String: Any] = ["name": l.name, "pct": l.pct]
             if let r = l.resetsAt { d["resetsAt"] = iso.string(from: r) }
@@ -1001,7 +1013,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Label–value rows for the signed-in account: reset · plan end · daily budget · usage.
     func currentDetailRows(_ s: UsageSnapshot) -> [DetailRow] {
         var rows = [DetailRow(label: L("detail.reset"), value: weekdayTime(s.weeklyResetsAt))]
-        if let end = s.planEndsAt {
+        if let end = s.planEndsAt, s.planRenews == true {
+            rows.append(DetailRow(label: L("detail.renews"), value: shortDay(end)))
+        } else if let end = s.planEndsAt {
             let n = AccountMath.resetsBefore(end, next: s.weeklyResetsAt)
             if end < Date() {
                 rows.append(DetailRow(label: L("detail.plan"), value: shortDay(end) + " · " + L("accounts.plan_passed"), color: .tertiaryLabelColor))

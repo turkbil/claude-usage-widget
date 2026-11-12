@@ -156,7 +156,7 @@
 "accounts.resets" = "%d resets left";
 "accounts.resets_split" = "%d weekly · %@ %d resets left";
 "accounts.tip_note" = "Entered by hand. Replaced by real data when you sign in to this account.";
-"accounts.stale_note" = "Dimmed = old data · * reset since · ↺ = free reset · orange = last week";
+"accounts.stale_note" = "Dimmed = old data · * reset since · ↺ = free reset · orange = plan ending";
 "accounts.hint_current" = "%d%% unused here · resets in %@";
 "accounts.hint_other" = "Use %@ first · %d%% unused · resets in %@";
 "accounts.columns" = "left · reset · plan ends";
@@ -174,7 +174,7 @@
 "detail.last_week" = "last week";
 "col.left" = "LEFT";
 "col.reset" = "RESETS";
-"col.plan" = "ENDS";
+"col.plan" = "MONTH";
 "detail.grants" = "Free resets";
 "grant.weekly" = "%d weekly";
 "grant.fable" = "%d Fable";
@@ -183,3 +183,5 @@
 "grant.until" = "until %@";
 "notification.plan_end" = "The %@ plan ends on %@ — use the quota left.";
 "notification.grant_end" = "%@ has an unused free reset: %@.";
+"detail.renews" = "Renews";
+"tip.plan_ends" = "Plan ends %@";
