@@ -190,7 +190,8 @@ final class AccountStore {
 func weekdayTime(_ d: Date) -> String {
     let f = DateFormatter()
     f.setLocalizedDateFormatFromTemplate("EEE HH:mm")
-    return f.string(from: d)
+    // resets_at can be …:59:59.9 — round to the nearest minute so it reads 14:00, not 13:59.
+    return f.string(from: Date(timeIntervalSince1970: (d.timeIntervalSince1970 / 60).rounded() * 60))
 }
 
 /// "13 Kas"
