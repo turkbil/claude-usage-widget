@@ -176,7 +176,7 @@
 "hide.delete" = "Löschen";
 "icon.ring" = "Ring mit Zahl";
 "icon.hint" = "Nächstes Konto in der Menüleiste zeigen (⏳ claude1)";
-"col.grants" = "↺ FREI";
+"col.grants" = "BONUS";
 "grants.show" = "Freie Resets anzeigen";
 "grants.hide" = "Freie Resets ausblenden";
 "grants.none" = "keine freien Resets";

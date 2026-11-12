@@ -176,7 +176,7 @@
 "hide.delete" = "Eliminar";
 "icon.ring" = "Anillo con el número";
 "icon.hint" = "Mostrar la siguiente cuenta en la barra de menús (⏳ claude1)";
-"col.grants" = "↺ GRAT.";
+"col.grants" = "GRAT.";
 "grants.show" = "Mostrar reinicios gratis";
 "grants.hide" = "Ocultar reinicios gratis";
 "grants.none" = "sin reinicios gratis";

@@ -238,7 +238,9 @@ func leftColor(_ left: Double) -> NSColor {
 /// column titles sit exactly over their values.
 struct AccountColumns {
     static let gap: CGFloat = 10
-    static let barW: CGFloat = 48, pctW: CGFloat = 46, grantW: CGFloat = 30, resetW: CGFloat = 70, planW: CGFloat = 52
+    /// Fixed slot for the "●" current-account mark, so every name starts at the same x.
+    static let markW: CGFloat = 14
+    static let barW: CGFloat = 40, pctW: CGFloat = 46, grantW: CGFloat = 38, resetW: CGFloat = 70, planW: CGFloat = 52
     let name, bar, pct, grant, reset, plan: (x: CGFloat, w: CGFloat)
     init(width: CGFloat) {
         let x0 = Layout.hPad, end = width - Layout.hPad, g = Self.gap
@@ -284,6 +286,7 @@ final class AccountRowView: NSView {
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
     private let grant = NSTextField(labelWithString: "")   // free resets on hand: ↺2 · 0 · —
+    private let mark  = NSTextField(labelWithString: "")   // "●" on the signed-in account, empty otherwise
     private var isCurrentRow = false
     var onClick: (() -> Void)?
 
@@ -294,7 +297,12 @@ final class AccountRowView: NSView {
 
         name.font = .systemFont(ofSize: 12, weight: .medium)
         name.lineBreakMode = .byTruncatingTail
-        name.frame = NSRect(x: c.name.x, y: 5, width: c.name.w, height: 16)
+        mark.font = .systemFont(ofSize: 8)
+        mark.textColor = .labelColor
+        mark.frame = NSRect(x: c.name.x, y: 6, width: AccountColumns.markW, height: 14)
+        addSubview(mark)
+        name.frame = NSRect(x: c.name.x + AccountColumns.markW, y: 5,
+                            width: c.name.w - AccountColumns.markW, height: 16)
 
         bar.frame = NSRect(x: c.bar.x, y: 10.5, width: c.bar.w, height: 5)
 
@@ -333,7 +341,8 @@ final class AccountRowView: NSView {
         // Signed-out accounts are dimmed: their numbers are from the last sign-in.
         // Truncate, never wrap: a wrapped name vanished below the row.
         let para = NSMutableParagraphStyle(); para.lineBreakMode = .byTruncatingTail
-        name.attributedStringValue = NSAttributedString(string: (isCurrent ? "● " : "") + shortName, attributes: [
+        mark.stringValue = isCurrent ? "●" : ""
+        name.attributedStringValue = NSAttributedString(string: shortName, attributes: [
             .font: nameFont, .paragraphStyle: para,
             .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
 
@@ -521,7 +530,9 @@ final class GrantDetailView: NSView {
         autoresizingMask = [.width]
         field.font = .systemFont(ofSize: 11)
         field.lineBreakMode = .byTruncatingTail
-        field.frame = NSRect(x: Layout.hPad + 12, y: 2, width: width - Layout.hPad * 2 - 12, height: 14)
+        // Starts where the account names start (after the "●" slot).
+        field.frame = NSRect(x: Layout.hPad + AccountColumns.markW, y: 2,
+                             width: width - Layout.hPad * 2 - AccountColumns.markW, height: 14)
         field.autoresizingMask = [.width]
         addSubview(field)
     }

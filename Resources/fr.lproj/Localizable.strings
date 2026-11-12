@@ -154,7 +154,7 @@
 "detail.breakdown" = "Usage";
 "detail.plan" = "Fin abo";
 "detail.last_week" = "dernière semaine";
-"col.left" = "RESTANT";
+"col.left" = "RESTE";
 "col.reset" = "RÉINIT.";
 "col.plan" = "MOIS";
 "detail.grants" = "Réinit. offertes";
@@ -176,7 +176,7 @@
 "hide.delete" = "Supprimer";
 "icon.ring" = "Anneau avec le nombre";
 "icon.hint" = "Afficher le compte suivant dans la barre des menus (⏳ claude1)";
-"col.grants" = "↺ OFFERT";
+"col.grants" = "GRAT.";
 "grants.show" = "Afficher les réinit. offertes";
 "grants.hide" = "Masquer les réinit. offertes";
 "grants.none" = "aucune réinit. offerte";

@@ -194,7 +194,7 @@
 "hide.delete" = "Sil";
 "icon.ring" = "Halka içinde sayı";
 "icon.hint" = "Sıradaki hesabı menü çubuğunda göster (⏳ claude1)";
-"col.grants" = "↺ HAK";
+"col.grants" = "HAK";
 "grants.show" = "Sıfırlama haklarını göster";
 "grants.hide" = "Sıfırlama haklarını gizle";
 "grants.none" = "sıfırlama hakkı yok";
