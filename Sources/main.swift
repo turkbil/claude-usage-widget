@@ -827,11 +827,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             prefs: PrefsStore.shared.prefs,
             error: (lastSnapshot == nil && lastError != nil)
         )
-        // "→ claude1": another account's unused quota resets within 48 h.
+        // "⏳ claude1" — same mark as the popup hint: another account's unused quota
+        // resets within 48 h, use it first. (An arrow read as "signed in as claude1".)
         let current = lastSnapshot?.email?.lowercased()
+        var hintTip: String? = nil
         if let sug = AccountMath.suggestion(AccountStore.shared.states()), sug.record.email != current {
+            let short = AccountStore.shared.shortName(sug.record.email)
+            if let next = sug.nextReset, let left = sug.weeklyLeft {
+                hintTip = L("accounts.hint_other", short as NSString, Int(left.rounded()), formatRemaining(next) as NSString)
+            }
             let title = NSMutableAttributedString(attributedString: attr)
-            title.append(NSAttributedString(string: " → " + AccountStore.shared.shortName(sug.record.email),
+            title.append(NSAttributedString(string: "  ⏳" + short,
                                             attributes: [.foregroundColor: NSColor.systemOrange,
                                                          .font: NSFont.menuBarFont(ofSize: 0)]))
             button.attributedTitle = title
@@ -841,6 +847,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let s = lastSnapshot {
             let pct = Int(s.weeklyUtilization.rounded())
             button.toolTip = L("tooltip", pct, formatRemaining(s.weeklyResetsAt) as NSString)
+                + (hintTip.map { "\n⏳ " + $0 } ?? "")
         }
     }
 
