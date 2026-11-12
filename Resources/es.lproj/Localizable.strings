@@ -148,3 +148,7 @@
 "tip.seen" = "Últimos datos: %@";
 "tip.rolled" = "* Ya debería haberse reiniciado.";
 "tip.refresh" = "Inicia sesión en esta cuenta para actualizar.";
+"label.scoped_cap" = "%@ · máx. %d%%";
+"detail.reset" = "↻ se reinicia %@";
+"detail.daily" = "~%d%% al día";
+"detail.breakdown" = "Esta semana: %@";

@@ -230,6 +230,10 @@ final class AccountRowView: NSView {
         let r = s.record
         let lastWeek = (s.weeklyResetsLeft == 0) && (r.planEndsAt.map { $0 > Date() } ?? false)
         name.stringValue = (isCurrent ? "● " : "") + shortName
+        // The signed-in account gets a soft band so it stands out in the list.
+        wantsLayer = true
+        layer?.backgroundColor = isCurrent ? NSColor.labelColor.withAlphaComponent(0.07).cgColor : nil
+        name.font = .systemFont(ofSize: 12, weight: isCurrent ? .bold : .medium)
 
         // Monthly date: orange when the plan ends before the next weekly reset
         // (last week of the subscription), faint when the date has passed.

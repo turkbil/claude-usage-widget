@@ -166,3 +166,7 @@
 "tip.seen" = "Last data: %@";
 "tip.rolled" = "* Should have reset since then.";
 "tip.refresh" = "Sign in to this account to update it.";
+"label.scoped_cap" = "%@ · max %d%%";
+"detail.reset" = "↻ resets %@";
+"detail.daily" = "~%d%% a day to last the week";
+"detail.breakdown" = "This week: %@";

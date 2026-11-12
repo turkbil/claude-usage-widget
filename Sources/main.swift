@@ -44,6 +44,8 @@ struct UsageSnapshot {
     var email: String? = nil
     var scopedLimits: [ScopedLimit] = []      // per-model weekly limits, e.g. Fable
     var planEndsAt: Date? = nil               // end of the paid month
+    var breakdown: [(name: String, pct: Double)] = []   // where the week went: Claude Code, Chat, …
+    var scopedShare: Double? = nil            // max % of the weekly limit the first scoped model may use
 }
 
 /// "default_claude_max_20x" → "Max 20x"
@@ -107,6 +109,15 @@ struct ClaudeAPI {
             scoped.append(ScopedLimit(name: n, pct: pct, resetsAt: (item["resets_at"] as? String).flatMap(parseISO)))
         }
 
+        // seven_day_breakdown.rows: share of this week's usage per surface.
+        let breakdown: [(name: String, pct: Double)] =
+            (((dict["seven_day_breakdown"] as? [String: Any])?["rows"] as? [[String: Any]]) ?? []).compactMap { row in
+                guard let n = row["display_name"] as? String,
+                      let p = (row["percent"] as? NSNumber)?.doubleValue else { return nil }
+                return (n, p)
+            }
+        let share = ((dict["weekly_scoped_shares"] as? [[String: Any]])?.first?["allowance_percent_of_weekly"] as? NSNumber)?.doubleValue
+
         return UsageSnapshot(
             weeklyUtilization:   weeklyUtil,
             weeklyResetsAt:      weeklyResets,
@@ -118,7 +129,9 @@ struct ClaudeAPI {
             fetchedAt:           Date(),
             email:               account?.email,
             scopedLimits:        scoped,
-            planEndsAt:          planEndsAt
+            planEndsAt:          planEndsAt,
+            breakdown:           breakdown,
+            scopedShare:         share
         )
     }
 
@@ -581,6 +594,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // NSMenu, so the item itself must be hidden.
     var sonnetItem: NSMenuItem!
     var forecastItem: NSMenuItem!
+    var detailsView: NoteView!
+    var detailsItem: NSMenuItem!
     var fiveHourHeaderItem: NSMenuItem!
     var fiveHourItem: NSMenuItem!
     var fiveHourSeparator: NSMenuItem!
@@ -820,6 +835,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         forecastItem = NSMenuItem(); forecastItem.view = forecastView
         menu.addItem(forecastItem)
 
+        // Current account details: reset · plan end · daily budget · where the week went
+        detailsView = NoteView(width: menuWidth, height: 62)
+        detailsItem = NSMenuItem(); detailsItem.view = detailsView
+        menu.addItem(detailsItem)
+
         // 7-day sparkline trend
         sparklineView = SparklineView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: 44))
         sparklineView.autoresizingMask = [.width]
@@ -951,11 +971,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ])
     }
 
+    /// "↻ Pzt 16:00 sıfırlanır · Abonelik 13 Kas · 0 sıfırlama kaldı" · daily budget · breakdown
+    func currentDetailLines(_ s: UsageSnapshot) -> [String] {
+        var lines: [String] = []
+        lines.append(L("detail.reset", weekdayTime(s.weeklyResetsAt) as NSString))
+        if let end = s.planEndsAt {
+            var plan = [L("accounts.plan_until", shortDay(end) as NSString)]
+            if let n = AccountMath.resetsBefore(end, next: s.weeklyResetsAt) { plan.append(L("accounts.resets", n)) }
+            lines.append(plan.joined(separator: " · "))
+        }
+
+        // Daily budget: what is left spread over the days until the reset.
+        let days = s.weeklyResetsAt.timeIntervalSinceNow / 86400
+        if days > 0.25 {
+            let left = max(0, 100 - s.weeklyUtilization)
+            lines.append(L("detail.daily", Int((left / max(1, days)).rounded())))
+        }
+
+        let used = s.breakdown.filter { $0.pct >= 1 }.sorted { $0.pct > $1.pct }
+        if !used.isEmpty {
+            lines.append(L("detail.breakdown", used.map { "\($0.name) %\(Int($0.pct.rounded()))" }.joined(separator: " · ") as NSString))
+        }
+        return lines
+    }
+
     func updateMenuLabels() {
         guard weeklyHeader != nil else { return }
 
         if let s = lastSnapshot, (s.displayName != nil || s.planLabel != nil) {
-            accountHeader.update(name: s.displayName, plan: s.planLabel)
+            // The e-mail tells the accounts apart; display names are often the same.
+            accountHeader.update(name: s.email.map { "● " + $0 } ?? s.displayName, plan: s.planLabel)
             accountHeader.isHidden = false
             accountSeparator?.isHidden = false
         } else {
@@ -966,8 +1011,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let s = lastSnapshot {
             weeklyHeader.update(L("section.weekly"), trailing: remainingWithSuffix(s.weeklyResetsAt))
             allModelsRow.update(label: L("label.all_models"), percent: s.weeklyUtilization)
+            let lines = currentDetailLines(s)
+            detailsView.field.stringValue = lines.joined(separator: "\n")
+            detailsView.frame.size.height = CGFloat(lines.count) * 15 + 8
+            detailsItem.isHidden = lines.isEmpty
+
             if let f = s.scopedLimits.first {
-                sonnetRow.update(label: f.name, percent: f.pct)
+                let label = s.scopedShare.map { L("label.scoped_cap", f.name as NSString, Int($0.rounded())) } ?? f.name
+                sonnetRow.update(label: label, percent: f.pct)
                 sonnetItem.isHidden = false
             } else if let sonnet = s.sonnetUtilization {
                 sonnetRow.update(label: L("label.sonnet"), percent: sonnet)
