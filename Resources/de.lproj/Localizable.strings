@@ -138,10 +138,10 @@
 "accounts.resets" = "%d Resets bis Ende";
 "accounts.resets_split" = "%d wöchentlich · %@ %d";
 "accounts.tip_note" = "Von Hand eingetragen. Wird beim Anmelden durch echte Daten ersetzt.";
-"accounts.stale_note" = "Blass = Daten der letzten Anmeldung · * zurückgesetzt · ⌛︎ letzte Woche";
+"accounts.stale_note" = "Blass = letzte Anmeldung · * zurückgesetzt · orange = letzte Woche";
 "accounts.hint_current" = "%d%% hier ungenutzt, Reset in %@.";
 "accounts.hint_other" = "Zuerst %@: %d%% frei, Reset in %@.";
-"accounts.columns" = "frei · Reset";
+"accounts.columns" = "frei · Reset · Abo-Ende";
 "accounts.sign_in" = "anmelden";
 "tip.weekly" = "Woche: %@ frei · ↻ %@ (%@)";
 "tip.scoped" = "%@: %d%% frei";

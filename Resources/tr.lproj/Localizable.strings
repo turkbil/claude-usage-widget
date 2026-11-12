@@ -156,10 +156,10 @@
 "accounts.resets" = "%d sıfırlama kaldı";
 "accounts.resets_split" = "%d haftalık · %@ %d sıfırlama";
 "accounts.tip_note" = "Elle girilen not verisi. O hesaba giriş yapınca gerçek veriyle değişir.";
-"accounts.stale_note" = "Soluk = son girişteki veri · * sıfırlanmış olmalı · ⌛︎ son hafta";
+"accounts.stale_note" = "Soluk = eski veri · * sıfırlanmış olmalı · turuncu = son hafta";
 "accounts.hint_current" = "Bu hesapta %%%d boş, %@ içinde sıfırlanıyor.";
 "accounts.hint_other" = "Önce %@: %%%d boş, %@ içinde sıfırlanıyor.";
-"accounts.columns" = "kalan · sıfırlama";
+"accounts.columns" = "kalan · sıfırlama · abonelik";
 "accounts.sign_in" = "giriş yapın";
 "tip.weekly" = "Haftalık: %@ kaldı · ↻ %@ (%@)";
 "tip.scoped" = "%@: %%%d kaldı";

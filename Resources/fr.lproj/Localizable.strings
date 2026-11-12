@@ -138,10 +138,10 @@
 "accounts.resets" = "%d réinitialisations avant la fin";
 "accounts.resets_split" = "%d hebdo · %@ %d";
 "accounts.tip_note" = "Saisi à la main. Remplacé par les vraies données à la connexion.";
-"accounts.stale_note" = "Grisé = dernière connexion · * réinitialisé depuis · ⌛︎ dernière semaine";
+"accounts.stale_note" = "Grisé = dernière connexion · * réinitialisé · orange = dernière semaine";
 "accounts.hint_current" = "%d%% inutilisés ici, réinitialisés dans %@.";
 "accounts.hint_other" = "Utilisez d’abord %@ : %d%% libres, réinit. dans %@.";
-"accounts.columns" = "restant · réinit.";
+"accounts.columns" = "restant · réinit. · fin abo";
 "accounts.sign_in" = "se connecter";
 "tip.weekly" = "Hebdo : %@ restant · ↻ %@ (%@)";
 "tip.scoped" = "%@ : %d%% restant";

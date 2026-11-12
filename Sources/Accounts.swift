@@ -191,13 +191,14 @@ final class AccountRowView: NSView {
     private let bar   = ProgressBarView(frame: .zero)
     private let left  = NSTextField(labelWithString: "")
     private let reset = NSTextField(labelWithString: "")
+    private let plan  = NSTextField(labelWithString: "")   // end of the paid month
 
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
         autoresizingMask = [.width]
         let x0 = Layout.hPad, inner = width - Layout.hPad * 2
-        let nameW: CGFloat = 84, barW: CGFloat = 46, pctW: CGFloat = 42, gap: CGFloat = 6
-        let resetW = inner - nameW - barW - pctW - gap * 3
+        let nameW: CGFloat = 84, barW: CGFloat = 40, pctW: CGFloat = 42, planW: CGFloat = 44, gap: CGFloat = 6
+        let resetW = inner - nameW - barW - pctW - planW - gap * 4
 
         name.font = .systemFont(ofSize: 12, weight: .medium)
         name.lineBreakMode = .byTruncatingTail
@@ -212,17 +213,33 @@ final class AccountRowView: NSView {
         reset.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         reset.alignment = .right
         reset.lineBreakMode = .byTruncatingTail
-        reset.frame = NSRect(x: width - Layout.hPad - resetW, y: 5, width: resetW, height: 15)
+        reset.frame = NSRect(x: width - Layout.hPad - planW - gap - resetW, y: 5, width: resetW, height: 15)
         reset.autoresizingMask = [.minXMargin]
 
-        [name, bar, left, reset].forEach(addSubview)
+        plan.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        plan.alignment = .right
+        plan.lineBreakMode = .byClipping
+        plan.frame = NSRect(x: width - Layout.hPad - planW, y: 5, width: planW, height: 15)
+        plan.autoresizingMask = [.minXMargin]
+
+        [name, bar, left, reset, plan].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
     func update(_ s: AccountState, isCurrent: Bool, shortName: String) {
         let r = s.record
         let lastWeek = (s.weeklyResetsLeft == 0) && (r.planEndsAt.map { $0 > Date() } ?? false)
-        name.stringValue = (isCurrent ? "● " : "") + shortName + (lastWeek ? " ⌛\u{FE0E}" : "")   // text-style glyph, not the colour emoji
+        name.stringValue = (isCurrent ? "● " : "") + shortName
+
+        // Monthly date: orange when the plan ends before the next weekly reset
+        // (last week of the subscription), faint when the date has passed.
+        if let end = r.planEndsAt {
+            plan.stringValue = shortDay(end)
+            plan.textColor = end < Date() ? .tertiaryLabelColor : (lastWeek ? .systemOrange : .secondaryLabelColor)
+        } else {
+            plan.stringValue = "—"
+            plan.textColor = .tertiaryLabelColor
+        }
         // Signed-out accounts are dimmed: their numbers are from the last sign-in.
         name.textColor = isCurrent ? .labelColor : .secondaryLabelColor
 
