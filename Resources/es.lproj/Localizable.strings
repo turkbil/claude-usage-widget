@@ -154,3 +154,6 @@
 "detail.breakdown" = "Uso";
 "detail.plan" = "Fin del plan";
 "detail.last_week" = "última semana";
+"col.left" = "LIBRE";
+"col.reset" = "REINICIO";
+"col.plan" = "FIN";

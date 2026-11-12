@@ -601,7 +601,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var fiveHourSeparator: NSMenuItem!
     // Accounts section
     var accountsAnchor: NSMenuItem!
-    var accountsHeader: SectionHeaderView!
+    var accountsHeader: AccountsHeaderView!
     var suggestionView: NoteView!
     var suggestionItem: NSMenuItem!
     var staleView: NoteView!
@@ -612,7 +612,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var fiveHourHeader: SectionHeaderView!
     var fiveHourRow: UsageRowView!
     var footer: FooterView!
-    let menuWidth: CGFloat = 330
+    let menuWidth: CGFloat = 380
 
     // Menu items that need live updating
     var versionUpdateItem: NSMenuItem?
@@ -831,20 +831,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sonnetItem = NSMenuItem(); sonnetItem.view = sonnetRow
         menu.addItem(sonnetItem)
 
+        // 7-day sparkline trend, then its forecast line
+        sparklineView = SparklineView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: 44))
+        sparklineView.autoresizingMask = [.width]
+        let sparklineItem = NSMenuItem(); sparklineItem.view = sparklineView
+        menu.addItem(sparklineItem)
+
         forecastView = ForecastView(width: menuWidth)
         forecastItem = NSMenuItem(); forecastItem.view = forecastView
         menu.addItem(forecastItem)
 
         // Current account details: reset · plan end · daily budget · where the week went
+        menu.addItem(NSMenuItem.separator())
         detailsView = DetailsView(width: menuWidth)
         detailsItem = NSMenuItem(); detailsItem.view = detailsView
         menu.addItem(detailsItem)
-
-        // 7-day sparkline trend
-        sparklineView = SparklineView(frame: NSRect(x: 0, y: 0, width: menuWidth, height: 44))
-        sparklineView.autoresizingMask = [.width]
-        let sparklineItem = NSMenuItem(); sparklineItem.view = sparklineView
-        menu.addItem(sparklineItem)
 
         fiveHourSeparator = NSMenuItem.separator()
         menu.addItem(fiveHourSeparator)
@@ -859,16 +860,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Accounts seen on this Mac (last-seen values for the signed-out ones)
         menu.addItem(NSMenuItem.separator())
-        accountsHeader = SectionHeaderView(width: menuWidth)
+        accountsHeader = AccountsHeaderView(width: menuWidth)
         accountsAnchor = NSMenuItem(); accountsAnchor.view = accountsHeader
         menu.addItem(accountsAnchor)
 
-        suggestionView = NoteView(width: menuWidth, height: 36)
+        suggestionView = NoteView(width: menuWidth, height: 24)
         suggestionView.field.textColor = .systemOrange
         suggestionItem = NSMenuItem(); suggestionItem.view = suggestionView
         menu.addItem(suggestionItem)
         // account rows are inserted here by updateAccountsSection()
-        staleView = NoteView(width: menuWidth, height: 22)
+        staleView = NoteView(width: menuWidth, height: 28)
         staleView.field.textColor = .tertiaryLabelColor
         staleView.field.font = .systemFont(ofSize: 10)
         staleView.field.stringValue = L("accounts.stale_note")
@@ -933,7 +934,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let empty = states.isEmpty
         accountsAnchor.isHidden = empty
         staleItem.isHidden = empty || states.count < 2
-        accountsHeader.update(L("section.accounts"), trailing: empty ? "" : L("accounts.columns"))
 
         if let s = AccountMath.suggestion(states), let next = s.nextReset, let left = s.weeklyLeft {
             let pct = Int(left.rounded())

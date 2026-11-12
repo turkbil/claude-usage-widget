@@ -154,3 +154,6 @@
 "detail.breakdown" = "Usage";
 "detail.plan" = "Fin abo";
 "detail.last_week" = "dernière semaine";
+"col.left" = "RESTANT";
+"col.reset" = "RÉINIT.";
+"col.plan" = "FIN";

@@ -184,9 +184,48 @@ func leftColor(_ left: Double) -> NSColor {
 
 // MARK: - Views
 
-/// One-line row: name · bar · % left · next reset. The rest lives in the tooltip.
+/// Column grid shared by the accounts header and every account row, so the
+/// column titles sit exactly over their values.
+struct AccountColumns {
+    static let gap: CGFloat = 10
+    static let barW: CGFloat = 56, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
+    let name, bar, pct, reset, plan: (x: CGFloat, w: CGFloat)
+    init(width: CGFloat) {
+        let x0 = Layout.hPad, end = width - Layout.hPad, g = Self.gap
+        plan  = (end - Self.planW, Self.planW)
+        reset = (plan.x - g - Self.resetW, Self.resetW)
+        pct   = (reset.x - g - Self.pctW, Self.pctW)
+        bar   = (pct.x - g - Self.barW, Self.barW)
+        name  = (x0, bar.x - g - x0)
+    }
+}
+
+/// Column titles: HESAPLAR · KALAN · SIFIRLAMA · BİTİŞ
+final class AccountsHeaderView: NSView {
+    init(width: CGFloat) {
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Layout.headerHeight))
+        autoresizingMask = [.width]
+        let c = AccountColumns(width: width)
+        func title(_ key: String, _ col: (x: CGFloat, w: CGFloat), right: Bool, strong: Bool = false) {
+            let f = NSTextField(labelWithString: L(key))
+            f.font = .systemFont(ofSize: 10, weight: .heavy)
+            f.textColor = strong ? .secondaryLabelColor : .tertiaryLabelColor
+            f.alignment = right ? .right : .left
+            f.lineBreakMode = .byClipping
+            f.frame = NSRect(x: col.x, y: 8, width: col.w, height: 14)
+            addSubview(f)
+        }
+        title("section.accounts", c.name, right: false, strong: true)
+        title("col.left", c.pct, right: true)
+        title("col.reset", c.reset, right: true)
+        title("col.plan", c.plan, right: true)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+}
+
+/// One-line row: name · bar · % left · reset day/time · plan end. Details in the tooltip.
 final class AccountRowView: NSView {
-    static let height: CGFloat = 24
+    static let height: CGFloat = 26
     private let name  = NSTextField(labelWithString: "")
     private let bar   = ProgressBarView(frame: .zero)
     private let left  = NSTextField(labelWithString: "")
@@ -196,31 +235,27 @@ final class AccountRowView: NSView {
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
         autoresizingMask = [.width]
-        let x0 = Layout.hPad, inner = width - Layout.hPad * 2
-        let nameW: CGFloat = 84, barW: CGFloat = 40, pctW: CGFloat = 42, planW: CGFloat = 44, gap: CGFloat = 6
-        let resetW = inner - nameW - barW - pctW - planW - gap * 4
+        let c = AccountColumns(width: width)
 
         name.font = .systemFont(ofSize: 12, weight: .medium)
         name.lineBreakMode = .byTruncatingTail
-        name.frame = NSRect(x: x0, y: 4, width: nameW, height: 16)
+        name.frame = NSRect(x: c.name.x, y: 5, width: c.name.w, height: 16)
 
-        bar.frame = NSRect(x: x0 + nameW + gap, y: 9.5, width: barW, height: 5)
+        bar.frame = NSRect(x: c.bar.x, y: 10.5, width: c.bar.w, height: 5)
 
         left.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         left.alignment = .right
-        left.frame = NSRect(x: x0 + nameW + gap + barW + gap, y: 4, width: pctW, height: 16)
+        left.frame = NSRect(x: c.pct.x, y: 5, width: c.pct.w, height: 16)
 
-        reset.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        reset.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         reset.alignment = .right
-        reset.lineBreakMode = .byTruncatingTail
-        reset.frame = NSRect(x: width - Layout.hPad - planW - gap - resetW, y: 5, width: resetW, height: 15)
-        reset.autoresizingMask = [.minXMargin]
+        reset.lineBreakMode = .byClipping
+        reset.frame = NSRect(x: c.reset.x, y: 5, width: c.reset.w, height: 16)
 
-        plan.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        plan.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         plan.alignment = .right
         plan.lineBreakMode = .byClipping
-        plan.frame = NSRect(x: width - Layout.hPad - planW, y: 5, width: planW, height: 15)
-        plan.autoresizingMask = [.minXMargin]
+        plan.frame = NSRect(x: c.plan.x, y: 5, width: c.plan.w, height: 16)
 
         [name, bar, left, reset, plan].forEach(addSubview)
     }
@@ -260,7 +295,7 @@ final class AccountRowView: NSView {
 
         if let n = s.nextReset {
             // Within two days the countdown matters more than the weekday.
-            reset.stringValue = n.timeIntervalSinceNow <= AccountMath.hintWindow ? formatRemaining(n) : weekdayTime(n)
+            reset.stringValue = weekdayTime(n)
             reset.textColor = .secondaryLabelColor
         } else {
             reset.stringValue = L("accounts.sign_in")

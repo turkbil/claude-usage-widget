@@ -154,3 +154,6 @@
 "detail.breakdown" = "Nutzung";
 "detail.plan" = "Abo endet";
 "detail.last_week" = "letzte Woche";
+"col.left" = "FREI";
+"col.reset" = "RESET";
+"col.plan" = "ENDE";
