@@ -4,6 +4,20 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.7] — 2026-11-13
+
+### Added
+- **API credits per account** (developer console, platform.claude.com): balance, granted
+  credits ("API $4.42 / $200 granted · until 16 Nov") and **today's API spend** per account,
+  plus today's total over all accounts in the expanded header. Read-only; read for the account
+  signed in to the console, every 10 minutes or on "Refresh now" — others keep their last value.
+- **Last read** under every account (resets and API separately), so old numbers never look live.
+- One-time notification when a granted API credit expires within 3 days.
+
+### Fixed
+- If the free-reset request is refused, the widget falls back to plain `/usage` and keeps the
+  last known resets instead of showing 0.
+
 ## [1.5.6] — 2026-11-13
 
 ### Changed
