@@ -185,3 +185,9 @@
 "notification.grant_end" = "%@ has an unused free reset: %@.";
 "detail.renews" = "Renews";
 "tip.plan_ends" = "Plan ends %@";
+"tip.remove" = "Click: remove from the list";
+"hide.title" = "Remove %@ from the list?";
+"hide.body" = "%@ will no longer appear in the popup or alerts, even after you sign in to it again. Use \"Show hidden accounts\" to bring it back.";
+"hide.confirm" = "Remove";
+"hide.cancel" = "Cancel";
+"hide.show" = "Show hidden accounts (%d)";

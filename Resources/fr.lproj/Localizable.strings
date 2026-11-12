@@ -167,3 +167,9 @@
 "notification.grant_end" = "%@ a une réinitialisation inutilisée : %@.";
 "detail.renews" = "Renouvelé";
 "tip.plan_ends" = "Fin de l’abonnement %@";
+"tip.remove" = "Clic : retirer de la liste";
+"hide.title" = "Retirer %@ de la liste ?";
+"hide.body" = "%@ n’apparaîtra plus dans le panneau ni les alertes, même après reconnexion. « Afficher les comptes masqués » le rétablit.";
+"hide.confirm" = "Retirer";
+"hide.cancel" = "Annuler";
+"hide.show" = "Afficher les comptes masqués (%d)";

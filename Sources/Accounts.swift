@@ -115,6 +115,16 @@ final class AccountStore {
 
     private(set) var records: [AccountRecord] = []
 
+    /// Accounts the user removed from the list. Kept by e-mail so they stay hidden
+    /// even after signing in to them again; "show hidden accounts" brings them back.
+    private static let hiddenKey = "hiddenAccounts"
+    var hidden: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: Self.hiddenKey) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue).sorted(), forKey: Self.hiddenKey) }
+    }
+    func hide(_ email: String) { hidden.insert(email.lowercased()) }
+    func unhideAll() { hidden = [] }
+
     private init() { load() }
 
     func upsert(_ snap: UsageSnapshot) {
@@ -138,7 +148,8 @@ final class AccountStore {
             guard let l = s.weeklyLeft else { return 2 }
             return l >= 5 ? 0 : 1
         }
-        return records.map { AccountMath.state($0, now: now) }.sorted { a, b in
+        let hiddenNow = hidden
+        return records.filter { !hiddenNow.contains($0.email) }.map { AccountMath.state($0, now: now) }.sorted { a, b in
             if group(a) != group(b) { return group(a) < group(b) }
             return (a.nextReset ?? .distantFuture) < (b.nextReset ?? .distantFuture)
         }
@@ -256,6 +267,7 @@ final class AccountRowView: NSView {
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
     private var isCurrentRow = false
+    var onClick: (() -> Void)?
 
     init(width: CGFloat) {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
@@ -338,9 +350,24 @@ final class AccountRowView: NSView {
         toolTip = Self.details(s, isCurrent: isCurrent)
     }
 
-    private func setBand() {
-        layer?.backgroundColor = isCurrentRow ? NSColor.labelColor.withAlphaComponent(0.07).cgColor : nil
+    private func setBand(hover: Bool = false) {
+        let a: CGFloat = hover ? 0.12 : (isCurrentRow ? 0.07 : 0)
+        layer?.backgroundColor = a > 0 ? NSColor.labelColor.withAlphaComponent(a).cgColor : nil
     }
+
+    // Click → onClick (asks whether to remove the account from the list).
+    override func mouseUp(with event: NSEvent) {
+        guard let action = onClick else { return }
+        enclosingMenuItem?.menu?.cancelTracking()
+        DispatchQueue.main.async(execute: action)
+    }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { setBand(hover: true) }
+    override func mouseExited(with event: NSEvent)  { setBand() }
 
     static func details(_ s: AccountState, isCurrent: Bool) -> String {
         let r = s.record
@@ -365,6 +392,7 @@ final class AccountRowView: NSView {
         }
         lines.append(L("tip.seen", (isCurrent ? L("accounts.now") : ageText(r.seenAt)) as NSString))
         if s.rolled { lines.append(L("tip.rolled")) }
+        lines.append(L("tip.remove"))
         if r.source == "note" { lines.append(L("accounts.tip_note")) }
         else if !isCurrent { lines.append(L("tip.refresh")) }
         return lines.joined(separator: "\n")

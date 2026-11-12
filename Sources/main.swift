@@ -631,6 +631,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var staleView: NoteView!
     var staleItem: NSMenuItem!
     var accountRowItems: [NSMenuItem] = []
+    var showHiddenItem: NSMenuItem!
     var forecastView: ForecastView!
     var sparklineView: SparklineView!
     var fiveHourHeader: SectionHeaderView!
@@ -911,6 +912,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         staleView.field.stringValue = L("accounts.stale_note")
         staleItem = NSMenuItem(); staleItem.view = staleView
         menu.addItem(staleItem)
+        showHiddenItem = NSMenuItem(title: "", action: #selector(showHiddenAccounts), keyEquivalent: "")
+        showHiddenItem.target = self
+        menu.addItem(showHiddenItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -960,6 +964,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateAccountsSection()
     }
 
+    /// "Remove claude3 from the list?" — hides it (reversible from the menu).
+    func confirmHide(_ email: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = L("hide.title", AccountStore.shared.shortName(email) as NSString)
+        alert.informativeText = L("hide.body", email as NSString)
+        alert.addButton(withTitle: L("hide.confirm"))
+        alert.addButton(withTitle: L("hide.cancel"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        AccountStore.shared.hide(email)
+        updateAccountsSection()
+        updateTitle()
+    }
+
+    @objc func showHiddenAccounts() {
+        AccountStore.shared.unhideAll()
+        updateAccountsSection()
+        updateTitle()
+    }
+
     /// Rebuilds the account rows and the 48-hour hint from AccountStore.
     func updateAccountsSection() {
         guard let menu = statusItem.menu, accountsAnchor != nil else { return }
@@ -967,6 +991,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let store = AccountStore.shared
         let states = store.states()
 
+        let hiddenCount = store.hidden.count
+        showHiddenItem.isHidden = hiddenCount == 0
+        showHiddenItem.attributedTitle = NSAttributedString(string: L("hide.show", hiddenCount), attributes: [
+            .foregroundColor: NSColor.secondaryLabelColor, .font: NSFont.systemFont(ofSize: 12)])
         let empty = states.isEmpty
         accountsAnchor.isHidden = empty
         staleItem.isHidden = empty || states.count < 2
@@ -998,6 +1026,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for (item, s) in zip(accountRowItems, states) {
             let row = item.view as? AccountRowView
             row?.update(s, isCurrent: s.record.email == current, shortName: store.shortName(s.record.email))
+            let email = s.record.email
+            row?.onClick = { [weak self] in self?.confirmHide(email) }
             item.toolTip = (item.view as? AccountRowView)?.toolTip
         }
     }

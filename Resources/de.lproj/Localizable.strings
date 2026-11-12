@@ -167,3 +167,9 @@
 "notification.grant_end" = "%@ hat einen ungenutzten Reset: %@.";
 "detail.renews" = "Verlängert";
 "tip.plan_ends" = "Abo endet %@";
+"tip.remove" = "Klick: aus der Liste entfernen";
+"hide.title" = "%@ aus der Liste entfernen?";
+"hide.body" = "%@ erscheint nicht mehr im Popup und in Hinweisen, auch nach erneuter Anmeldung. Mit „Ausgeblendete Konten anzeigen“ zurückholen.";
+"hide.confirm" = "Entfernen";
+"hide.cancel" = "Abbrechen";
+"hide.show" = "Ausgeblendete Konten anzeigen (%d)";

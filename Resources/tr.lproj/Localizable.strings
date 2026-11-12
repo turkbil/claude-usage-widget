@@ -185,3 +185,9 @@
 "notification.grant_end" = "%@ hesabında kullanılmamış sıfırlama hakkı: %@.";
 "detail.renews" = "Yenileme";
 "tip.plan_ends" = "Abonelik %@ tarihinde bitiyor";
+"tip.remove" = "Tıklayın: listeden kaldır";
+"hide.title" = "%@ listeden kaldırılsın mı?";
+"hide.body" = "%@ panelde ve uyarılarda bir daha görünmez; giriş yapsanız da geri gelmez. «Gizlenen hesapları göster» ile geri alabilirsiniz.";
+"hide.confirm" = "Kaldır";
+"hide.cancel" = "Vazgeç";
+"hide.show" = "Gizlenen hesapları göster (%d)";
