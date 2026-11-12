@@ -986,13 +986,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for (item, s) in zip(accountRowItems, states) {
             let row = item.view as? AccountRowView
             row?.update(s, isCurrent: s.record.email == current, shortName: store.shortName(s.record.email))
-            let email = s.record.email
-            row?.onClick = s.record.email == current ? nil : {
-                // We can't switch accounts for the user; copy the address and open sign-in.
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(email, forType: .string)
-                NSWorkspace.shared.open(URL(string: "https://claude.ai/login")!)
-            }
             item.toolTip = (item.view as? AccountRowView)?.toolTip
         }
     }

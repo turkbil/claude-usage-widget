@@ -181,6 +181,5 @@
 "grant.session" = "%d session";
 "grant.other" = "%d reset";
 "grant.until" = "until %@";
-"tip.click" = "Click: copies the e-mail and opens the claude.ai sign-in page.";
 "notification.plan_end" = "The %@ plan ends on %@ — use the quota left.";
 "notification.grant_end" = "%@ has an unused free reset: %@.";

@@ -163,6 +163,5 @@
 "grant.session" = "%d Sitzung";
 "grant.other" = "%d Reset";
 "grant.until" = "bis %@";
-"tip.click" = "Klick: kopiert die E-Mail und öffnet die Anmeldung.";
 "notification.plan_end" = "Das Abo von %@ endet am %@.";
 "notification.grant_end" = "%@ hat einen ungenutzten Reset: %@.";

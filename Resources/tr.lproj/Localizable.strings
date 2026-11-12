@@ -181,6 +181,5 @@
 "grant.session" = "%d oturum";
 "grant.other" = "%d sıfırlama";
 "grant.until" = "son %@";
-"tip.click" = "Tıklayın: e-posta kopyalanır, claude.ai giriş sayfası açılır.";
 "notification.plan_end" = "%@ aboneliği %@ tarihinde bitiyor; kalan kotayı kullanın.";
 "notification.grant_end" = "%@ hesabında kullanılmamış sıfırlama hakkı: %@.";

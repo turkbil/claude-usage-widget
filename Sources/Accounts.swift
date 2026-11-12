@@ -252,7 +252,6 @@ final class AccountRowView: NSView {
     private let left  = NSTextField(labelWithString: "")
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
-    var onClick: (() -> Void)?
     private var isCurrentRow = false
 
     init(width: CGFloat) {
@@ -290,7 +289,7 @@ final class AccountRowView: NSView {
         isCurrentRow = isCurrent
         // The signed-in account gets a soft band so it stands out in the list.
         wantsLayer = true
-        setBand(hover: false)
+        setBand()
         let nameFont = NSFont.systemFont(ofSize: 12, weight: isCurrent ? .bold : .medium)
         name.font = nameFont
         // Signed-out accounts are dimmed: their numbers are from the last sign-in.
@@ -336,24 +335,8 @@ final class AccountRowView: NSView {
         toolTip = Self.details(s, isCurrent: isCurrent)
     }
 
-    // Click a signed-out account → onClick (copy e-mail + open the claude.ai sign-in page).
-    override func mouseUp(with event: NSEvent) {
-        guard let action = onClick else { return }
-        enclosingMenuItem?.menu?.cancelTracking()
-        action()
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
-    }
-    override func mouseEntered(with event: NSEvent) { if onClick != nil { setBand(hover: true) } }
-    override func mouseExited(with event: NSEvent)  { setBand(hover: false) }
-
-    private func setBand(hover: Bool) {
-        let a: CGFloat = hover ? 0.12 : (isCurrentRow ? 0.07 : 0)
-        layer?.backgroundColor = a > 0 ? NSColor.labelColor.withAlphaComponent(a).cgColor : nil
+    private func setBand() {
+        layer?.backgroundColor = isCurrentRow ? NSColor.labelColor.withAlphaComponent(0.07).cgColor : nil
     }
 
     static func details(_ s: AccountState, isCurrent: Bool) -> String {
@@ -379,7 +362,6 @@ final class AccountRowView: NSView {
         if s.rolled { lines.append(L("tip.rolled")) }
         if r.source == "note" { lines.append(L("accounts.tip_note")) }
         else if !isCurrent { lines.append(L("tip.refresh")) }
-        if !isCurrent { lines.append(L("tip.click")) }
         return lines.joined(separator: "\n")
     }
 }

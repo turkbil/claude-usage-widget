@@ -163,6 +163,5 @@
 "grant.session" = "%d sesión";
 "grant.other" = "%d reinicio";
 "grant.until" = "hasta %@";
-"tip.click" = "Clic: copia el correo y abre el inicio de sesión.";
 "notification.plan_end" = "El plan de %@ termina el %@.";
 "notification.grant_end" = "%@ tiene un reinicio sin usar: %@.";

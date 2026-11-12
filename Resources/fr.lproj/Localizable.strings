@@ -163,6 +163,5 @@
 "grant.session" = "%d session";
 "grant.other" = "%d réinit.";
 "grant.until" = "jusqu’au %@";
-"tip.click" = "Clic : copie l’e-mail et ouvre la connexion.";
 "notification.plan_end" = "L’abonnement de %@ se termine le %@.";
 "notification.grant_end" = "%@ a une réinitialisation inutilisée : %@.";
