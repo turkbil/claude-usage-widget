@@ -78,7 +78,13 @@ struct ClaudeAPI {
         let planEndsAt = plan?.date
 
         // cedar_ember=1 adds the free-reset grants (what claude.ai/settings/usage shows). Read-only.
-        let json = try getJSON("/api/organizations/\(orgId)/usage?cedar_ember=1&skip_spend=1", cookie: cookie)
+        // If the free-reset variant is refused (seen once mid account-switch), fall back to plain /usage.
+        let json: Any
+        if let j = try? getJSON("/api/organizations/\(orgId)/usage?cedar_ember=1&skip_spend=1", cookie: cookie) {
+            json = j
+        } else {
+            json = try getJSON("/api/organizations/\(orgId)/usage", cookie: cookie)
+        }
 
         guard let dict = json as? [String: Any],
               let seven = dict["seven_day"] as? [String: Any],
