@@ -4,24 +4,33 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] — 2026-11-12
 
 ### Added
-- **Accounts section.** Every claude.ai account signed in on this Mac is remembered in
-  `~/.claude-usage-widget-accounts.json`: e-mail, weekly % left, per-model (Fable) % left,
-  weekly reset day/time and countdown, end of the paid month and how many weekly resets
-  are left before it. Signed-out accounts show their last-seen values, marked as possibly
-  out of date (sign in to that account once to update it).
-- **"Use this account first" hint.** When an account with unused weekly quota resets
-  within 48 hours, the popup says so.
-- **Per-model weekly limit row** (e.g. Fable) read from the new `limits[]` field.
+- **Accounts section.** Every claude.ai account you sign in to on this Mac is remembered
+  (`~/.claude-usage-widget-accounts.json`, local only). One line per account: weekly % left,
+  weekly reset day/time and the monthly date. Signed-out accounts are dimmed and show the
+  values from their last sign-in; hover a row for Fable, plan and free-reset details.
+  Order = which account to use first.
+- **"Use this account first" hint** in the popup, in the menu bar (`→ claude1`) and as a
+  one-time notification when an account's unused weekly quota resets within 48 hours.
+- **Free limit resets** that claude.ai grants (e.g. "One full limit reset", Fable resets):
+  count and expiry date (`↺1`), read-only — the widget never uses one.
+- **Current account details:** e-mail in the header, reset day/time, renewal or plan-end
+  date, daily budget (quota left ÷ days left), where the week went (Claude Code / Chat /
+  Cowork), and the Fable row with its share of the weekly limit.
+- **Notifications** (each sent once): a cancelled plan ending within 3 days, an unused free
+  reset expiring within 3 days. Threshold notifications are now tracked per account, so
+  switching accounts no longer fires a false "crossed 90 %".
+
+### Changed
+- Popup is 380 pt wide; account columns have aligned headers.
 
 ### Fixed
 - The trend chart was drawn upside down.
-- Hidden rows (5-hour window, forecast, Sonnet) still took their height, leaving large
-  empty gaps in the popup.
-- History mixed every account that was signed in; samples are now tagged per account and
-  the chart shows only the current one.
+- Hidden rows (5-hour window, forecast, Sonnet) left large empty gaps in the popup.
+- History mixed every signed-in account; samples are now tagged per account and the chart
+  shows only the current one.
 
 ## [1.4.5] — 2026-10-14
 
