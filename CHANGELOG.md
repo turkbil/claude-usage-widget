@@ -4,6 +4,16 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.5] — 2026-11-13
+
+### Changed
+- The signed-in account's free resets are shown only in the details block, not
+  repeated in the accounts list; the "Show free resets" toggle hides when there is
+  no other account.
+
+### Fixed
+- Reset times like …13:59:59 now read 14:00 (rounded to the nearest minute).
+
 ## [1.5.4] — 2026-11-13
 
 ### Added
