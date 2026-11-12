@@ -209,11 +209,19 @@ func ageText(_ d: Date, now: Date = Date()) -> String {
     return L("accounts.ago", L("time.days_short", Int(s / 86400)) as NSString)
 }
 
-/// "1 haftalık · son 11 Ara" for each kind of free reset on hand.
+/// "1 haftalık · son 11 Ara, 3 Fable · son 9 Mar" — grouped by kind, with the
+/// earliest expiry of each kind (the one to use first).
 func grantText(_ grants: [ResetGrant]) -> String {
-    grants.map { g in
-        let kind = L("grant." + g.kind, g.left)
-        return g.endsAt.map { kind + " · " + L("grant.until", shortDay($0) as NSString) } ?? kind
+    var order: [String] = []
+    var count: [String: Int] = [:], first: [String: Date] = [:]
+    for g in grants {
+        if count[g.kind] == nil { order.append(g.kind) }
+        count[g.kind, default: 0] += g.left
+        if let e = g.endsAt, first[g.kind].map({ e < $0 }) ?? true { first[g.kind] = e }
+    }
+    return order.map { k in
+        let kind = L("grant." + k, count[k] ?? 0)
+        return first[k].map { kind + " · " + L("grant.until", shortDay($0) as NSString) } ?? kind
     }.joined(separator: ", ")
 }
 
@@ -230,13 +238,14 @@ func leftColor(_ left: Double) -> NSColor {
 /// column titles sit exactly over their values.
 struct AccountColumns {
     static let gap: CGFloat = 10
-    static let barW: CGFloat = 56, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
-    let name, bar, pct, reset, plan: (x: CGFloat, w: CGFloat)
+    static let barW: CGFloat = 48, pctW: CGFloat = 46, grantW: CGFloat = 30, resetW: CGFloat = 70, planW: CGFloat = 52
+    let name, bar, pct, grant, reset, plan: (x: CGFloat, w: CGFloat)
     init(width: CGFloat) {
         let x0 = Layout.hPad, end = width - Layout.hPad, g = Self.gap
         plan  = (end - Self.planW, Self.planW)
         reset = (plan.x - g - Self.resetW, Self.resetW)
-        pct   = (reset.x - g - Self.pctW, Self.pctW)
+        grant = (reset.x - g - Self.grantW, Self.grantW)
+        pct   = (grant.x - g - Self.pctW, Self.pctW)
         bar   = (pct.x - g - Self.barW, Self.barW)
         name  = (x0, bar.x - g - x0)
     }
@@ -259,6 +268,7 @@ final class AccountsHeaderView: NSView {
         }
         title("section.accounts", c.name, right: false, strong: true)
         title("col.left", c.pct, right: true)
+        title("col.grants", c.grant, right: true)
         title("col.reset", c.reset, right: true)
         title("col.plan", c.plan, right: true)
     }
@@ -273,6 +283,7 @@ final class AccountRowView: NSView {
     private let left  = NSTextField(labelWithString: "")
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
+    private let grant = NSTextField(labelWithString: "")   // free resets on hand: ↺2 · 0 · —
     private var isCurrentRow = false
     var onClick: (() -> Void)?
 
@@ -301,7 +312,12 @@ final class AccountRowView: NSView {
         plan.lineBreakMode = .byClipping
         plan.frame = NSRect(x: c.plan.x, y: 5, width: c.plan.w, height: 16)
 
-        [name, bar, left, reset, plan].forEach(addSubview)
+        grant.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        grant.alignment = .right
+        grant.lineBreakMode = .byClipping
+        grant.frame = NSRect(x: c.grant.x, y: 5, width: c.grant.w, height: 16)
+
+        [name, bar, left, grant, reset, plan].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -315,14 +331,20 @@ final class AccountRowView: NSView {
         let nameFont = NSFont.systemFont(ofSize: 12, weight: isCurrent ? .bold : .medium)
         name.font = nameFont
         // Signed-out accounts are dimmed: their numbers are from the last sign-in.
-        let label = NSMutableAttributedString(string: (isCurrent ? "● " : "") + shortName, attributes: [
-            .font: nameFont, .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
-        if s.grantCount > 0 {   // ↺1 = free resets on hand
-            label.append(NSAttributedString(string: " ↺\(s.grantCount)", attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
-                .foregroundColor: NSColor(hex: "#d68c45")]))
+        // Truncate, never wrap: a wrapped name vanished below the row.
+        let para = NSMutableParagraphStyle(); para.lineBreakMode = .byTruncatingTail
+        name.attributedStringValue = NSAttributedString(string: (isCurrent ? "● " : "") + shortName, attributes: [
+            .font: nameFont, .paragraphStyle: para,
+            .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
+
+        // Free resets: ↺N when known and >0, 0 when known none, — when never read.
+        if r.grants == nil {
+            grant.stringValue = "—"; grant.textColor = .tertiaryLabelColor
+        } else if s.grantCount > 0 {
+            grant.stringValue = "↺\(s.grantCount)"; grant.textColor = NSColor(hex: "#d68c45")
+        } else {
+            grant.stringValue = "0"; grant.textColor = .tertiaryLabelColor
         }
-        name.attributedStringValue = label
 
         // Monthly date: plain when it renews (or unknown), orange when the plan
         // is cancelled and really ends that day, faint once the date has passed.
@@ -459,5 +481,61 @@ final class DetailsView: NSView {
             value.autoresizingMask = [.width]
             addSubview(label); addSubview(value)
         }
+    }
+}
+
+/// "▸ Sıfırlama haklarını göster" — clicking toggles without closing the menu.
+final class ToggleRowView: NSView {
+    private let field = NSTextField(labelWithString: "")
+    var onToggle: (() -> Void)?
+    init(width: CGFloat) {
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 24))
+        autoresizingMask = [.width]
+        wantsLayer = true
+        field.font = .systemFont(ofSize: 12, weight: .medium)
+        field.textColor = .secondaryLabelColor
+        field.frame = NSRect(x: Layout.hPad, y: 4, width: width - Layout.hPad * 2, height: 16)
+        field.autoresizingMask = [.width]
+        addSubview(field)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    func update(expanded: Bool) {
+        field.stringValue = (expanded ? "▾ " : "▸ ") + L(expanded ? "grants.hide" : "grants.show")
+    }
+    override func mouseUp(with event: NSEvent) { onToggle?() }   // menu stays open
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.12).cgColor }
+    override func mouseExited(with event: NSEvent)  { layer?.backgroundColor = nil }
+}
+
+/// The line under an account when free resets are expanded:
+/// "↺ 1 haftalık · son 11 Ara, 3 Fable · son 9 Mar" · "↺ hak yok" · "↺ bilinmiyor · giriş yapınca görünür"
+final class GrantDetailView: NSView {
+    private let field = NSTextField(labelWithString: "")
+    init(width: CGFloat) {
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 18))
+        autoresizingMask = [.width]
+        field.font = .systemFont(ofSize: 11)
+        field.lineBreakMode = .byTruncatingTail
+        field.frame = NSRect(x: Layout.hPad + 12, y: 2, width: width - Layout.hPad * 2 - 12, height: 14)
+        field.autoresizingMask = [.width]
+        addSubview(field)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    func update(_ s: AccountState) {
+        if s.record.grants == nil {
+            field.stringValue = "↺ " + L("grants.unknown"); field.textColor = .tertiaryLabelColor
+        } else if s.grantsLeft.isEmpty {
+            field.stringValue = "↺ " + L("grants.none"); field.textColor = .tertiaryLabelColor
+        } else {
+            field.stringValue = "↺ " + grantText(s.grantsLeft); field.textColor = NSColor(hex: "#d68c45")
+        }
+        toolTip = s.grantsLeft.isEmpty ? nil : s.grantsLeft.map { g in
+            L("grant." + g.kind, g.left) + (g.endsAt.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "")
+        }.joined(separator: "\n")
     }
 }

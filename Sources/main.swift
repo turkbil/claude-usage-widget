@@ -631,13 +631,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var staleView: NoteView!
     var staleItem: NSMenuItem!
     var accountRowItems: [NSMenuItem] = []
+    var grantDetailItems: [NSMenuItem] = []      // one per account, shown when expanded
+    var grantsToggle: ToggleRowView!
+    var grantsToggleItem: NSMenuItem!
+    var grantsExpanded: Bool {
+        get { UserDefaults.standard.bool(forKey: "grantsExpanded") }
+        set { UserDefaults.standard.set(newValue, forKey: "grantsExpanded") }
+    }
     var showHiddenItem: NSMenuItem!
     var forecastView: ForecastView!
     var sparklineView: SparklineView!
     var fiveHourHeader: SectionHeaderView!
     var fiveHourRow: UsageRowView!
     var footer: FooterView!
-    let menuWidth: CGFloat = 380
+    let menuWidth: CGFloat = 420
 
     // Menu items that need live updating
     var versionUpdateItem: NSMenuItem?
@@ -918,6 +925,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         staleView.field.textColor = .tertiaryLabelColor
         staleView.field.font = .systemFont(ofSize: 10)
         staleView.field.stringValue = L("accounts.stale_note")
+        // "▸ Show free resets" — expands a line under every account without closing the menu.
+        grantsToggle = ToggleRowView(width: menuWidth)
+        grantsToggle.onToggle = { [weak self] in
+            guard let self = self else { return }
+            self.grantsExpanded.toggle()
+            self.updateAccountsSection()
+        }
+        grantsToggleItem = NSMenuItem(); grantsToggleItem.view = grantsToggle
+        menu.addItem(grantsToggleItem)
+
         staleItem = NSMenuItem(); staleItem.view = staleView
         menu.addItem(staleItem)
         showHiddenItem = NSMenuItem(title: "", action: #selector(showHiddenAccounts), keyEquivalent: "")
@@ -1028,14 +1045,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Reuse rows when the count is unchanged (the menu may be open).
         if accountRowItems.count != states.count {
-            for item in accountRowItems { menu.removeItem(item) }
+            for item in accountRowItems + grantDetailItems { menu.removeItem(item) }
             accountRowItems = states.map { _ in
                 let item = NSMenuItem()
                 item.view = AccountRowView(width: menuWidth)
                 return item
             }
+            grantDetailItems = states.map { _ in
+                let item = NSMenuItem()
+                item.view = GrantDetailView(width: menuWidth)
+                return item
+            }
             var at = menu.index(of: suggestionItem) + 1
-            for item in accountRowItems { menu.insertItem(item, at: at); at += 1 }
+            for (row, detail) in zip(accountRowItems, grantDetailItems) {
+                menu.insertItem(row, at: at); menu.insertItem(detail, at: at + 1); at += 2
+            }
+        }
+        grantsToggle.update(expanded: grantsExpanded)
+        grantsToggleItem.isHidden = empty
+        for (item, s) in zip(grantDetailItems, states) {
+            (item.view as? GrantDetailView)?.update(s)
+            item.isHidden = !grantsExpanded
         }
         for (item, s) in zip(accountRowItems, states) {
             let row = item.view as? AccountRowView

@@ -194,3 +194,8 @@
 "hide.delete" = "Delete";
 "icon.ring" = "Ring with the number inside";
 "icon.hint" = "Show the next account in the menu bar (⏳ claude1)";
+"col.grants" = "↺ FREE";
+"grants.show" = "Show free resets";
+"grants.hide" = "Hide free resets";
+"grants.none" = "no free resets";
+"grants.unknown" = "unknown · shows after you sign in to this account";

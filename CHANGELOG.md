@@ -4,6 +4,20 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.4] — 2026-11-13
+
+### Added
+- **Free resets per account:** a `↺ FREE` column (↺N · 0 · — unknown) and a
+  "Show free resets" toggle that opens a line under every account
+  ("1 weekly · until 11 Dec, 3 Fable · until 9 Mar") without closing the menu.
+
+### Fixed
+- The signed-in account's name could vanish (it wrapped below the row).
+- Free resets of the same kind are grouped with their earliest expiry.
+
+### Changed
+- Popup is 420 pt wide.
+
 ## [1.5.3] — 2026-11-13
 
 ### Added
