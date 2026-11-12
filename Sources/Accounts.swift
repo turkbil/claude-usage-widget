@@ -347,7 +347,10 @@ final class AccountRowView: NSView {
             .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
 
         // Free resets: ↺N when known and >0, 0 when known none, — when never read.
-        if r.grants == nil {
+        // Not for the signed-in account: its resets are already in the details above.
+        if isCurrent {
+            grant.stringValue = ""
+        } else if r.grants == nil {
             grant.stringValue = "—"; grant.textColor = .tertiaryLabelColor
         } else if s.grantCount > 0 {
             grant.stringValue = "↺\(s.grantCount)"; grant.textColor = NSColor(hex: "#d68c45")

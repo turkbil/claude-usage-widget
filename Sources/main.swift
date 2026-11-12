@@ -1065,7 +1065,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         grantsToggleItem.isHidden = empty
         for (item, s) in zip(grantDetailItems, states) {
             (item.view as? GrantDetailView)?.update(s)
-            item.isHidden = !grantsExpanded
+            // The signed-in account's resets are in the details block above — no repeat.
+            item.isHidden = !grantsExpanded || s.record.email == current
         }
         for (item, s) in zip(accountRowItems, states) {
             let row = item.view as? AccountRowView
