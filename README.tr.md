@@ -70,6 +70,14 @@ Bir menü çubuğu uygulamasında genellikle yan yana bulunmayan birkaç özelli
 - 🪟 5 saatlik rolling pencere için ayrı bölüm
 - 🌍 **Otomatik dil** — English, Türkçe, Deutsch, Español, Français
 
+### Birden çok hesap (1.5)
+- 👥 **Hesaplar listesi** — bu Mac'te giriş yaptığınız her claude.ai hesabı tek satırda: haftalık kalan % · sıfırlama günü/saati · aylık yenileme tarihi. Açık olmayan hesaplar son girişteki veriyi gösterir (soluk); güncellemek için bir kez giriş yapın.
+- ⏳ **«Önce bu hesabı kullan»** — boş kotası 48 saat içinde sıfırlanacak hesap için (panel, isteğe bağlı menü çubuğu ipucu, tek seferlik bildirim)
+- ↺ claude.ai'nin verdiği **ücretsiz sıfırlama hakları**, son tarihiyle — yalnız okunur, widget hiçbirini kullanmaz
+- 🧾 Aktif hesap: e-posta, yenileme tarihi, günlük pay, haftanın dağılımı (Claude Code / Sohbet / Cowork), Fable satırı
+- 🙈 Hesabı listeden **gizle ya da sil** (satırına tıklayın)
+- ⭕ Menü çubuğunda **halka içinde sayı** görünümü
+
 ### Ayarlar penceresi (⌘,)
 - Tüm tercihler tek bakışta, iç içe menü yok
 - Eşik bildirimleri (uyarı / alarm / kritik) — slider'larla ayarlanır
@@ -244,6 +252,7 @@ Widget şifreni asla görmez. Tarayıcının kendisinin kullandığı şifreli-c
 - **Saklanan dosyalar** (toplam ~70 KB):
   - `~/.claude-usage-widget-cache.json` — son snapshot
   - `~/.claude-usage-widget-history.json` — 14 günlük sparkline örnekleri
+  - `~/.claude-usage-widget-accounts.json` — giriş yaptığınız her hesabın son görülen verisi (e-posta, %, sıfırlama/yenileme tarihleri, sıfırlama hakları). Çerez ve ödeme bilgisi yok. Panelden satır silinebilir ya da dosya kaldırılabilir.
 - **Ayarlar** `defaults` (UserDefaults) içinde.
 
 ---

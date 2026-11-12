@@ -70,6 +70,14 @@ A handful of features you don't usually find together in a menu-bar app:
 - 🪟 Separate section for the 5-hour rolling window
 - 🌍 **Auto-localized** — English, Türkçe, Deutsch, Español, Français
 
+### Several accounts (1.5)
+- 👥 **Accounts list** — every claude.ai account you sign in to on this Mac, one line each: weekly % left · reset day/time · monthly renewal date. Signed-out accounts show their last-seen values (dimmed); sign in once to refresh.
+- ⏳ **"Use this account first"** — when an account's unused quota resets within 48 h (popup, optional menu-bar hint, one-time notification)
+- ↺ **Free limit resets** claude.ai grants, with expiry — read-only, never used by the widget
+- 🧾 Current account: e-mail, renewal date, daily budget, where the week went (Claude Code / Chat / Cowork), Fable row
+- 🙈 **Hide or delete** an account from the list (click its row)
+- ⭕ Menu-bar style **ring with the number inside**
+
 ### Settings window (⌘,)
 - All preferences visible at once, no nested menus
 - Threshold notifications (warn / alert / critical) with sliders
@@ -243,7 +251,8 @@ The widget never sees your password. It uses the same encrypted-cookie + Keychai
 - **Cookie never written to disk.** Lives in memory only.
 - **Persisted files** (~70 KB total):
   - `~/.claude-usage-widget-cache.json` — latest snapshot
-  - `~/.claude-usage-widget-history.json` — 14-day sparkline samples
+  - `~/.claude-usage-widget-history.json` — 14-day sparkline samples (tagged per account)
+  - `~/.claude-usage-widget-accounts.json` — last-seen values of each account you signed in to (e-mail, %, reset/renewal dates, free resets). No cookies, no payment data. Delete a row from the popup or remove the file.
 - **Settings stored** in `defaults` (UserDefaults).
 
 ---
