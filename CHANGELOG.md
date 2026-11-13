@@ -4,6 +4,18 @@ All notable changes to **Claude Usage Widget** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.8] — 2026-11-13
+
+### Changed
+- The accounts list shows **used %** for Weekly and Fable, the same as the bars at the top.
+- Hide / delete opens only from the **eye icon** at the end of each row; clicking the row does nothing.
+- Weekly and Fable free resets share **one row** in the expanded table
+  ("Resets · Weekly ↺1 · until 11 Dec · Fable ↺3 · until 9 Mar").
+
+### Fixed
+- The local HTTP server (127.0.0.1:9123) never actually started; it now serves `/usage`,
+  `/healthz` and the new read-only **`/accounts`** (used by the Chrome extension to restore data).
+
 ## [1.5.7] — 2026-11-13
 
 ### Added
