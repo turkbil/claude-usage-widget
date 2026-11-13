@@ -37,12 +37,18 @@ final class LocalHTTPServer {
             let params = NWParameters.tcp
             params.allowLocalEndpointReuse = true
             params.requiredLocalEndpoint = NWEndpoint.hostPort(host: .ipv4(.loopback), port: Self.port)
-            let l = try NWListener(using: params, on: Self.port)
+            // requiredLocalEndpoint already carries 127.0.0.1:9123; also passing the port is
+            // rejected with EINVAL on recent macOS, so the listener never started.
+            let l = try NWListener(using: params)
             l.newConnectionHandler = { [weak self] conn in self?.handle(conn) }
+            l.stateUpdateHandler = { st in
+                FileHandle.standardError.write("[http] listener \(st)\n".data(using: .utf8)!)
+            }
             l.start(queue: .global(qos: .utility))
             listener = l
         } catch {
-            // Port in use or other error — silently ignore; user will retry by toggling.
+            // Port in use or other error — logged; user will retry by toggling.
+            FileHandle.standardError.write("[http] start failed: \(error)\n".data(using: .utf8)!)
             listener = nil
         }
     }
@@ -57,7 +63,8 @@ final class LocalHTTPServer {
     private func handle(_ conn: NWConnection) {
         conn.start(queue: .global(qos: .utility))
         conn.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, _, _ in
-            defer { conn.cancel() }
+            // The connection is closed in respond()'s send completion; closing it here
+            // (before the async send finished) made every reply empty.
             guard let self = self, let data = data,
                   let request = String(data: data, encoding: .utf8) else {
                 self?.respond(conn: conn, status: 400, body: "bad request")
@@ -75,6 +82,12 @@ final class LocalHTTPServer {
         switch path {
         case "/usage", "/usage/", "/":
             let body = encodeSnapshot(lastSnapshot)
+            respond(conn: conn, status: 200, body: body, contentType: "application/json")
+        case "/accounts", "/accounts/":
+            // Last-seen account records (e-mail, %, resets, free resets, API credit, dates) so the
+            // Chrome extension can restore them after a reinstall. No cookies or payment data are in
+            // this file. No CORS header: web pages can't read it, only an extension with host permission.
+            let body = (try? String(contentsOfFile: AccountStore.path, encoding: .utf8)) ?? "[]"
             respond(conn: conn, status: 200, body: body, contentType: "application/json")
         case "/healthz":
             respond(conn: conn, status: 200, body: "{\"ok\":true}", contentType: "application/json")
@@ -99,8 +112,10 @@ final class LocalHTTPServer {
         Connection: close\r
         \r
         """
-        let payload = head + body
-        conn.send(content: payload.data(using: .utf8), completion: .contentProcessed { _ in })
+        // A multi-line literal drops the newline before its closing quotes, so the header block
+        // ended in "\r\n\r" and clients ate the first bytes of the body. Finish it explicitly.
+        let payload = head + "\n" + body
+        conn.send(content: payload.data(using: .utf8), completion: .contentProcessed { _ in conn.cancel() })
     }
 
     private func encodeSnapshot(_ s: UsageSnapshot?) -> String {
