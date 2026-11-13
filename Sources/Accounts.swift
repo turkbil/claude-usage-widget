@@ -315,12 +315,14 @@ struct AccountColumns {
     /// Fixed slot for the "●" current-account mark, so every name starts at the same x.
     static let markW: CGFloat = 14
     static let barW: CGFloat = 48, pctW: CGFloat = 46, resetW: CGFloat = 70, planW: CGFloat = 52
-    let name, bar, pct, fpct, reset, plan: (x: CGFloat, w: CGFloat)
+    static let iconW: CGFloat = 16
+    let name, bar, pct, fpct, reset, plan, icon: (x: CGFloat, w: CGFloat)
     /// Expanded free-reset sub-row: weekly under bar+KALAN, Fable under SIFIRLAMA+AYLIK.
     let weekly, fable: (x: CGFloat, w: CGFloat)
     init(width: CGFloat) {
         let x0 = Layout.hPad, end = width - Layout.hPad, g = Self.gap
-        plan  = (end - Self.planW, Self.planW)
+        icon  = (end - Self.iconW, Self.iconW)           // 👁 hide / delete, at the row end
+        plan  = (icon.x - g - Self.planW, Self.planW)
         reset = (plan.x - g - Self.resetW, Self.resetW)
         fpct  = (reset.x - g - Self.pctW, Self.pctW)     // Fable % left, next to the weekly one
         pct   = (fpct.x - g - Self.pctW, Self.pctW)
@@ -364,7 +366,8 @@ final class AccountRowView: NSView {
     private let reset = NSTextField(labelWithString: "")
     private let plan  = NSTextField(labelWithString: "")   // end of the paid month
     private let mark  = NSTextField(labelWithString: "")   // "●" on the signed-in account, empty otherwise
-    private let fable = NSTextField(labelWithString: "")   // Fable % left
+    private let fable = NSTextField(labelWithString: "")   // Fable % used
+    private let eye = NSImageView()                         // click → hide / delete
     private var isCurrentRow = false
     var onClick: (() -> Void)?
 
@@ -403,7 +406,13 @@ final class AccountRowView: NSView {
         fable.lineBreakMode = .byClipping
         fable.frame = NSRect(x: c.fpct.x, y: 5, width: c.fpct.w, height: 16)
 
-        [name, bar, left, fable, reset, plan].forEach(addSubview)
+        eye.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: L("tip.remove"))?
+            .withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
+        eye.contentTintColor = .tertiaryLabelColor
+        eye.frame = NSRect(x: c.icon.x, y: 5, width: c.icon.w, height: 16)
+        eye.toolTip = L("tip.remove")
+
+        [name, bar, left, fable, reset, plan, eye].forEach(addSubview)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -481,19 +490,25 @@ final class AccountRowView: NSView {
         layer?.backgroundColor = a > 0 ? NSColor.labelColor.withAlphaComponent(a).cgColor : nil
     }
 
-    // Click → onClick (asks whether to remove the account from the list).
+    /// Only the eye icon at the row end opens "hide / delete"; the rest of the row does nothing.
+    private func overEye(_ event: NSEvent) -> Bool {
+        eye.frame.insetBy(dx: -6, dy: -5).contains(convert(event.locationInWindow, from: nil))
+    }
     override func mouseUp(with event: NSEvent) {
-        guard let action = onClick else { return }
+        guard let action = onClick, overEye(event) else { return }
         enclosingMenuItem?.menu?.cancelTracking()
         DispatchQueue.main.async(execute: action)
+    }
+    override func mouseMoved(with event: NSEvent) {
+        eye.contentTintColor = overEye(event) ? .labelColor : .tertiaryLabelColor
     }
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect], owner: self))
     }
-    override func mouseEntered(with event: NSEvent) { setBand(hover: true) }
-    override func mouseExited(with event: NSEvent)  { setBand() }
+    override func mouseEntered(with event: NSEvent) { }
+    override func mouseExited(with event: NSEvent)  { eye.contentTintColor = .tertiaryLabelColor }
 
     static func details(_ s: AccountState, isCurrent: Bool) -> String {
         let r = s.record
@@ -518,7 +533,6 @@ final class AccountRowView: NSView {
         }
         lines.append(L("tip.seen", (isCurrent ? L("accounts.now") : ageText(r.seenAt)) as NSString))
         if s.rolled { lines.append(L("tip.rolled")) }
-        lines.append(L("tip.remove"))
         if r.source == "note" { lines.append(L("accounts.tip_note")) }
         else if !isCurrent { lines.append(L("tip.refresh")) }
         return lines.joined(separator: "\n")

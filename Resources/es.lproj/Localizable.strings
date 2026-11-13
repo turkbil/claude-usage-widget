@@ -167,7 +167,7 @@
 "notification.grant_end" = "%@ tiene un reinicio sin usar: %@.";
 "detail.renews" = "Renueva";
 "tip.plan_ends" = "El plan termina %@";
-"tip.remove" = "Clic: ocultar o eliminar";
+"tip.remove" = "Ocultar o eliminar";
 "hide.title" = "¿Qué hacer con %@?";
 "hide.body" = "Ocultar: %@ desaparece de la lista, los avisos y las notificaciones; los datos se conservan y «Mostrar cuentas ocultas» la recupera.\n\nEliminar: se borra el registro; vuelve a crearse al iniciar sesión de nuevo.";
 "hide.confirm" = "Ocultar";

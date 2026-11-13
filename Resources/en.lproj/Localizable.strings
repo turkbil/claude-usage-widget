@@ -185,7 +185,7 @@
 "notification.grant_end" = "%@ has an unused free reset: %@.";
 "detail.renews" = "Renews";
 "tip.plan_ends" = "Plan ends %@";
-"tip.remove" = "Click: hide or delete";
+"tip.remove" = "Hide or delete";
 "hide.title" = "What should happen to %@?";
 "hide.body" = "Hide: %@ disappears from the list, hints and notifications; its data is kept and \"Show hidden accounts\" brings it back.\n\nDelete: the record is removed; it is added again from scratch the next time you sign in to it.";
 "hide.confirm" = "Hide";

@@ -167,7 +167,7 @@
 "notification.grant_end" = "%@ a une réinitialisation inutilisée : %@.";
 "detail.renews" = "Renouvelé";
 "tip.plan_ends" = "Fin de l’abonnement %@";
-"tip.remove" = "Clic : masquer ou supprimer";
+"tip.remove" = "Masquer ou supprimer";
 "hide.title" = "Que faire de %@ ?";
 "hide.body" = "Masquer : %@ disparaît de la liste, des conseils et des notifications ; les données sont gardées et « Afficher les comptes masqués » le rétablit.\n\nSupprimer : l’entrée est effacée ; elle revient à la prochaine connexion.";
 "hide.confirm" = "Masquer";

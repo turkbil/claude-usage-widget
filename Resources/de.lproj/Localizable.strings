@@ -167,7 +167,7 @@
 "notification.grant_end" = "%@ hat einen ungenutzten Reset: %@.";
 "detail.renews" = "Verlängert";
 "tip.plan_ends" = "Abo endet %@";
-"tip.remove" = "Klick: ausblenden oder löschen";
+"tip.remove" = "Ausblenden oder löschen";
 "hide.title" = "Was soll mit %@ passieren?";
 "hide.body" = "Ausblenden: %@ verschwindet aus Liste, Hinweisen und Mitteilungen; die Daten bleiben, „Ausgeblendete Konten anzeigen“ holt es zurück.\n\nLöschen: der Eintrag wird entfernt und bei der nächsten Anmeldung neu angelegt.";
 "hide.confirm" = "Ausblenden";
