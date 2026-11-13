@@ -297,12 +297,14 @@ func grantText(_ grants: [ResetGrant]) -> String {
     }.joined(separator: ", ")
 }
 
-func leftColor(_ left: Double) -> NSColor {
-    if left <= 10 { return .systemRed }
-    if left <= 25 { return .systemOrange }
-    if left <= 50 { return .systemYellow }
+/// Same thresholds as the usage bars at the top (UsageRowView).
+func usedColor(_ p: Double) -> NSColor {
+    if p >= 90 { return .systemRed }
+    if p >= 75 { return .systemOrange }
+    if p >= 50 { return .systemYellow }
     return .systemGreen
 }
+
 
 // MARK: - Views
 
@@ -422,10 +424,11 @@ final class AccountRowView: NSView {
             .font: nameFont, .paragraphStyle: para,
             .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor])
 
-        // Fable % left; "*" = its window has reset since the last read (counted from 0 again).
+        // Fable % used; "*" = its window has reset since the last read (back to 0).
         if let f = s.scopedLeft.first {
-            fable.stringValue = "%\(Int(f.left.rounded()))" + (s.scopedRolled ? "*" : "")
-            fable.textColor = leftColor(f.left)
+            let used = 100 - f.left
+            fable.stringValue = "%\(Int(used.rounded()))" + (s.scopedRolled ? "*" : "")
+            fable.textColor = usedColor(used)
         } else {
             fable.stringValue = "—"; fable.textColor = .tertiaryLabelColor
         }
@@ -442,11 +445,13 @@ final class AccountRowView: NSView {
             plan.textColor = .tertiaryLabelColor
         }
 
+        // Used %, like the bars at the top (otherwise the same account read %3 above, %97 here).
         if let l = s.weeklyLeft {
-            bar.progress = l / 100
-            bar.fillColor = leftColor(l).withAlphaComponent(isCurrent ? 1 : 0.7)
-            left.stringValue = "%\(Int(l.rounded()))" + (s.rolled ? "*" : "")
-            left.textColor = leftColor(l)
+            let used = 100 - l
+            bar.progress = used / 100
+            bar.fillColor = usedColor(used).withAlphaComponent(isCurrent ? 1 : 0.7)
+            left.stringValue = "%\(Int(used.rounded()))" + (s.rolled ? "*" : "")
+            left.textColor = usedColor(used)
         } else {
             bar.progress = 0
             left.stringValue = "—"
