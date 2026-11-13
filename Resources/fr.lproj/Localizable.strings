@@ -201,3 +201,6 @@
 "col.fable" = "FABLE";
 "accounts.not_signed_in" = "non connecté";
 "accounts.never_read" = "non connecté · jamais lu";
+"grants.row_resets" = "Réinit. offertes";
+"grants.cell_weekly" = "Hebdo";
+"grants.cell_fable" = "Fable";

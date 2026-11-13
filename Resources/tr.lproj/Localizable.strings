@@ -219,3 +219,6 @@
 "col.fable" = "FABLE";
 "accounts.not_signed_in" = "giriş yapılmadı";
 "accounts.never_read" = "giriş yapılmadı · bu hesabın verisi hiç okunmadı";
+"grants.row_resets" = "Sıfırlama hakkı";
+"grants.cell_weekly" = "Haftalık";
+"grants.cell_fable" = "Fable";

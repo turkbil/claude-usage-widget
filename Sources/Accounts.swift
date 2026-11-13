@@ -665,14 +665,15 @@ final class GrantDetailView: NSView {
     static let rowH: CGFloat = 16
     private var labels: [NSTextField] = []
     private var values: [NSTextField] = []
+    private let fableValue = grantCell()   // row 0, second cell: Fable resets next to the weekly ones
     private let width: CGFloat
     init(width: CGFloat) {
         self.width = width
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 4 * Self.rowH + 8))
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 3 * Self.rowH + 8))
         autoresizingMask = [.width]
         let c = AccountColumns(width: width)
         // Labels in the empty space under the account name, values from the bar column on.
-        for _ in 0..<4 {
+        for _ in 0..<3 {
             let l = NSTextField(labelWithString: "")
             l.font = .systemFont(ofSize: 11)
             l.textColor = .tertiaryLabelColor
@@ -683,6 +684,10 @@ final class GrantDetailView: NSView {
             addSubview(l); addSubview(v)
             labels.append(l); values.append(v)
         }
+        // Row 0 is two cells: weekly under HAFTA/FABLE, Fable under SIFIRLAMA/AYLIK.
+        values[0].frame.size.width = c.reset.x - c.bar.x - AccountColumns.gap
+        fableValue.frame = NSRect(x: c.reset.x, y: 0, width: width - Layout.hPad - c.reset.x, height: 14)
+        addSubview(fableValue)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -702,37 +707,42 @@ final class GrantDetailView: NSView {
     func update(_ s: AccountState, isCurrent: Bool) {
         let r = s.record
         let orange = NSColor(hex: "#d68c45")
-        for (i, kind, key) in [(0, "weekly", "grants.row_weekly"), (1, "fable", "grants.row_fable")] {
-            guard r.grants != nil else { set(i, L(key), L("grants.unknown_short"), .tertiaryLabelColor); continue }
+        // Row 0: "Sıfırlama hakkı   Haftalık ↺ 1 · son 11 Ara   Fable ↺ 3 · son 9 Mar"
+        func cell(_ kind: String, _ title: String) -> (String, NSColor) {
+            guard r.grants != nil else { return (title + " " + L("grants.unknown_short"), .tertiaryLabelColor) }
             let (n, first) = grantSummary(s.grantsLeft, kind: kind)
-            if n == 0 { set(i, L(key), "0", .tertiaryLabelColor) }
-            else { set(i, L(key), "↺ \(n)" + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? ""), orange) }
+            if n == 0 { return (title + " 0", .tertiaryLabelColor) }
+            return (title + " ↺ \(n)" + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? ""), orange)
         }
+        let w = cell("weekly", L("grants.cell_weekly")), f = cell("fable", L("grants.cell_fable"))
+        set(0, L("grants.row_resets"), w.0, w.1)
+        fableValue.frame.origin.y = values[0].frame.origin.y
+        fableValue.stringValue = f.0; fableValue.textColor = f.1
 
         if r.apiTotal == nil {
-            set(2, L("grants.row_api"), L("api.unknown"), .tertiaryLabelColor)
+            set(1, L("grants.row_api"), L("api.unknown"), .tertiaryLabelColor)
         } else if let cr = r.apiCredits?.filter({ $0.expiresAt.map { $0 > Date() } ?? true }), !cr.isEmpty {
             let left = cr.reduce(0) { $0 + $1.remaining }, granted = cr.reduce(0) { $0 + $1.granted }
             let first = cr.compactMap { $0.expiresAt }.min()
             let soon = first.map { $0.timeIntervalSinceNow < 3 * 86400 } ?? false
-            set(2, L("grants.row_api"),
+            set(1, L("grants.row_api"),
                 L("api.credit", money(left) as NSString, money(granted) as NSString)
                     + (first.map { " · " + L("grant.until", shortDay($0) as NSString) } ?? "") + todayText(r),
                 soon ? .systemRed : orange)
         } else {
-            set(2, L("grants.row_api"), L("api.balance", money(r.apiTotal ?? 0) as NSString) + todayText(r),
+            set(1, L("grants.row_api"), L("api.balance", money(r.apiTotal ?? 0) as NSString) + todayText(r),
                 (r.apiTotal ?? 0) > 0 ? .labelColor : .tertiaryLabelColor)
         }
 
         // Last read, separately: resets come from claude.ai, credits from the console.
         func when(_ d: Date) -> String { Date().timeIntervalSince(d) < 180 ? L("accounts.now") : dayTime(d) }
         if s.neverSignedIn && r.apiSeenAt == nil {
-            set(3, L("grants.row_seen"), L("accounts.never_read"), .tertiaryLabelColor)
+            set(2, L("grants.row_seen"), L("accounts.never_read"), .tertiaryLabelColor)
         } else {
             var bits: [String] = []
             if !s.neverSignedIn { bits.append(L("grants.seen_resets", when(r.grantsSeenAt ?? r.seenAt) as NSString)) }
             if let a = r.apiSeenAt { bits.append(L("grants.seen_api", when(a) as NSString)) }
-            set(3, L("grants.row_seen"), bits.joined(separator: " · "), .tertiaryLabelColor)
+            set(2, L("grants.row_seen"), bits.joined(separator: " · "), .tertiaryLabelColor)
         }
 
         toolTip = s.grantsLeft.isEmpty ? nil : s.grantsLeft.map { g in

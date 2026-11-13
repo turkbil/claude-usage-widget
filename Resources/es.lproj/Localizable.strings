@@ -201,3 +201,6 @@
 "col.fable" = "FABLE";
 "accounts.not_signed_in" = "sin sesión";
 "accounts.never_read" = "sin sesión · nunca leída";
+"grants.row_resets" = "Reinicios gratis";
+"grants.cell_weekly" = "Semanal";
+"grants.cell_fable" = "Fable";
